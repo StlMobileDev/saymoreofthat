@@ -1,0 +1,4 @@
+.metadata/**
+com.appspot.saymoreofthat/bin/**
+com.appspot.saymoreofthat/war/WEB-INF/appengine-generated/**
+
