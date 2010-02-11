@@ -26,5 +26,9 @@
 			<attribute name="javadoc_location" value="jar:platform:/resource/com.appspot.saymoreofthat/jersey-archive-1.1.4.1.zip!/jersey-archive-1.1.4.1/apidocs/jsr311"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/activation.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/jaxb-api.jar" sourcepath="war/WEB-INF/lib/jaxb-api-src.zip"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/jaxb-impl.jar" sourcepath="war/WEB-INF/lib/jaxb-impl.src.zip"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/jsr173_1.0_api.jar"/>
 	<classpathentry kind="output" path="war/WEB-INF/classes"/>
 </classpath>

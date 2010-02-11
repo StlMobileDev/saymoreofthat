@@ -5,13 +5,14 @@ import java.util.List;
 
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
+import javax.jdo.Transaction;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
@@ -19,6 +20,7 @@ import javax.ws.rs.core.Response;
 
 import com.appspot.saymoreofthat.rest.jaxb.UserResponse;
 import com.appspot.saymoreofthat.rest.jdo.PMF;
+import com.appspot.saymoreofthat.rest.jdo.Session;
 import com.appspot.saymoreofthat.rest.jdo.User;
 import com.google.appengine.api.datastore.Email;
 
@@ -33,14 +35,28 @@ public class UserResource {
 		final Response response;
 		try {
 			final Email email = new Email(emailValue);
-			List<User> oldUsersByEmail = queryUsersByEmail(persistenceManager,
-					email);
-			final User user;
+			Query userByEmailQuery = persistenceManager.newQuery(User.class);
+			userByEmailQuery
+					.declareParameters("com.google.appengine.api.datastore.Email emailParam");
+			userByEmailQuery.setFilter("email == emailParam");
+			List<User> oldUsersByEmail = (List<User>) userByEmailQuery
+					.execute(email);
 			if (oldUsersByEmail.isEmpty()) {
-				user = new User(email);
-				user.sessionIds
-						.add(httpServletRequest.getSession(true).getId());
-				persistenceManager.makePersistent(user);
+				User user = new User(email);
+				Session session = new Session(user, httpServletRequest
+						.getSession(true).getId());
+				user.getSessions().add(session);
+				Transaction transaction = persistenceManager.currentTransaction();
+				try {
+					transaction.begin();
+					persistenceManager.makePersistent(user);
+					transaction.commit();
+				} finally {
+					if (transaction.isActive()) {
+						transaction.rollback();
+					}
+				}
+				
 				response = Response.ok().build();
 			} else {
 				response = Response.serverError().build();
@@ -49,73 +65,49 @@ public class UserResource {
 			persistenceManager.close();
 		}
 
-		return Response.ok().build();
+		return response;
 	}
 
-	// @Path("/show/session")
-	// @GET
-	// @Produces(MediaType.APPLICATION_JSON)
-	// public UserResponse showUserWithSession(
-	// @Context HttpServletRequest httpServletRequest) {
-	// PersistenceManager persistenceManager = PMF.getPersistenceManager();
-	//
-	// final UserResponse userResponse;
-	// try {
-	// Query userByEmailQuery = persistenceManager.newQuery(User.class);
-	// userByEmailQuery.declareParameters("com.google.appengine.api.datastore.Email emailParam");
-	// userByEmailQuery.setFilter("email == emailParam");
-	//			
-	// List<User> usersByEmail = (List<User>) userByEmailQuery.execute(new
-	// Email(emailValue));
-	// if (usersByEmail.isEmpty()) {
-	// userResponse = null;
-	// } else {
-	// userResponse = new UserResponse();
-	// User user = usersByEmail.get(0);
-	// userResponse.email = user.email;
-	// userResponse.key = user.key;
-	// userResponse.sessions = new ArrayList<String>(user.sessionIds);
-	// }
-	// } finally {
-	// persistenceManager.close();
-	// }
-	//		
-	// return userResponse;
-	// }
-
-	@Path("/show/email/{email}")
+	@Path("/show/session")
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
-	public UserResponse showUserWithEmail(@PathParam("email") String emailValue) {
-		PersistenceManager persistenceManager = PMF.getPersistenceManager();
+	public Response showUserWithSession(
+			@Context HttpServletRequest httpServletRequest) {
+		final Response response;
+		HttpSession httpSession = httpServletRequest.getSession(false);
+		if (httpSession == null) {
+			response = Response.serverError().build();
+		} else {
+			PersistenceManager persistenceManager = PMF.getPersistenceManager();
 
-		final UserResponse userResponse;
-		try {
-			List<User> usersByEmail = queryUsersByEmail(persistenceManager,
-					new Email(emailValue));
-			if (usersByEmail.isEmpty()) {
-				userResponse = null;
-			} else {
-				userResponse = new UserResponse();
-				User user = usersByEmail.get(0);
-				userResponse.email = user.email;
-				userResponse.key = user.key;
-				userResponse.sessions = new ArrayList<String>(user.sessionIds);
+			try {
+				Query sessionBySessionIdQuery = persistenceManager
+						.newQuery(Session.class);
+				sessionBySessionIdQuery
+						.declareParameters("String sessionIdParam");
+				sessionBySessionIdQuery.setFilter("sessionId == sessionIdParam");
+				List<Session> sessionsBySessionId = (List<Session>) sessionBySessionIdQuery
+						.execute(httpSession.getId());
+				if (sessionsBySessionId.isEmpty()) {
+					response = Response.serverError().build();
+				} else {
+					final UserResponse userResponse = new UserResponse();
+					Session sessionWithSessionId = sessionsBySessionId.get(0);
+					User user = sessionWithSessionId.getUser();
+					userResponse.email = user.getEmail();
+					userResponse.sessions = new ArrayList<String>(user.getSessions()
+							.size());
+					for (Session session : user.getSessions()) {
+						userResponse.sessions.add(session.getSessionId());
+					}
+
+					response = Response.ok(userResponse).build();
+				}
+			} finally {
+				persistenceManager.close();
 			}
-		} finally {
-			persistenceManager.close();
 		}
 
-		return userResponse;
-	}
-
-	private List<User> queryUsersByEmail(PersistenceManager persistenceManager,
-			Email email) {
-		Query userByEmailQuery = persistenceManager.newQuery(User.class);
-		userByEmailQuery
-				.declareParameters("com.google.appengine.api.datastore.Email emailParam");
-		userByEmailQuery.setFilter("email == emailParam");
-
-		return (List<User>) userByEmailQuery.execute(email);
+		return response;
 	}
 }

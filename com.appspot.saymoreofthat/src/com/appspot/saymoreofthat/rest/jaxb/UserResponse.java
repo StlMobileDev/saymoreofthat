@@ -8,12 +8,10 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 
 import com.google.appengine.api.datastore.Email;
-import com.google.appengine.api.datastore.Key;
 
 @XmlRootElement
-@XmlType(propOrder={"key", "email", "sessions"})
+@XmlType(propOrder={"email", "sessions"})
 public class UserResponse {
-	public Key key;
 	public Email email;
 	
 	@XmlElementWrapper(name="sessions")

@@ -1,6 +1,3 @@
 .metadata/**
-com.appspot.saymoreofthat/bin/**
-com.appspot.saymoreofthat/war/WEB-INF/appengine-generated/**
 .DS_Store
-com.appspot.saymoreofthat.test/bin/**
 

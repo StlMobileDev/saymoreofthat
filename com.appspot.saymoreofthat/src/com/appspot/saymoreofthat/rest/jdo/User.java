@@ -17,22 +17,38 @@ import com.google.appengine.api.datastore.Key;
 public class User {
 	@PrimaryKey
     @Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
-    public Key key;
-	
-	@Persistent
-	@Element(dependent="true")
-	public Set<String> sessionIds;
-	
-	@Persistent
-	public Email email;
+    private Key key;
 	
 	@Persistent(mappedBy="user")
 	@Element(dependent="true")
-	public Set<Event> events;
+	private Set<Session> sessions;
+	
+	@Persistent
+	private Email email;
+	
+	@Persistent(mappedBy="user")
+	@Element(dependent="true")
+	private Set<Event> events;
 	
 	public User(Email email) {
 		this.email = email;
-		this.sessionIds = new HashSet<String>();
+		this.sessions = new HashSet<Session>();
 		this.events = new HashSet<Event>();
+	}
+	
+	public Email getEmail() {
+		return email;
+	}
+	
+	public Set<Event> getEvents() {
+		return events;
+	}
+	
+	public Set<Session> getSessions() {
+		return sessions;
+	}
+	
+	public Key getKey() {
+		return key;
 	}
 }
