@@ -1,22 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xmlns="http://java.sun.com/xml/ns/javaee"
-xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
-xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
-http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
+	xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	version="2.5">
 	<servlet>
-        <servlet-name>Jersey Web Application</servlet-name>
-        <servlet-class>com.sun.jersey.spi.container.servlet.ServletContainer</servlet-class>
-        <init-param>
-            <param-name>com.sun.jersey.config.property.packages</param-name>
-            <param-value>com.appspot.saymoreofthat.rest</param-value>
-        </init-param>
-        <load-on-startup>1</load-on-startup>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>Jersey Web Application</servlet-name>
-        <url-pattern>/rest/*</url-pattern>
-    </servlet-mapping>
+		<servlet-name>Jersey Web Application</servlet-name>
+		<servlet-class>com.sun.jersey.spi.container.servlet.ServletContainer</servlet-class>
+		<init-param>
+			<param-name>com.sun.jersey.config.property.packages</param-name>
+			<param-value>com.appspot.saymoreofthat.rest</param-value>
+		</init-param>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet>
+		<servlet-name>Reset</servlet-name>
+		<servlet-class>com.appspot.saymoreofthat.admin.ResetServlet</servlet-class>
+	</servlet>
+	<servlet>
+		<servlet-name>DumpUsers</servlet-name>
+		<servlet-class>com.appspot.saymoreofthat.admin.DumpUsersServlet</servlet-class>
+	</servlet>
+	<filter>
+		<filter-name>AdminUser</filter-name>
+		<filter-class>com.appspot.saymoreofthat.admin.AdminUserFilter</filter-class>
+	</filter>
+	<servlet-mapping>
+		<servlet-name>Jersey Web Application</servlet-name>
+		<url-pattern>/rest/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>Reset</servlet-name>
+		<url-pattern>/admin/reset</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>DumpUsers</servlet-name>
+		<url-pattern>/admin/dumpUsers</url-pattern>
+	</servlet-mapping>
+	<filter-mapping>
+		<filter-name>AdminUser</filter-name>
+		<url-pattern>/admin/*</url-pattern>
+	</filter-mapping>
 	<welcome-file-list>
 		<welcome-file>index.html</welcome-file>
 	</welcome-file-list>

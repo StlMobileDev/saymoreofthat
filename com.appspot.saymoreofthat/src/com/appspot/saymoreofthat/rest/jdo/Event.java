@@ -1,5 +1,6 @@
 package com.appspot.saymoreofthat.rest.jdo;
 
+import java.io.Serializable;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.Set;
@@ -14,7 +15,9 @@ import javax.jdo.annotations.PrimaryKey;
 import com.google.appengine.api.datastore.Key;
 
 @PersistenceCapable(identityType = IdentityType.APPLICATION)
-public class Event {
+public class Event implements Serializable {
+	private static final long serialVersionUID = 1L;
+
 	@PrimaryKey
     @Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
     public Key key;

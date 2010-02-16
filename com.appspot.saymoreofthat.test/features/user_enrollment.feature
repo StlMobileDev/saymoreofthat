@@ -4,10 +4,10 @@ Feature: User Enrollment
 	And get a session that persists for ever and ever and ever
 	
 	@wip
-	Scenario: New user hitting enrollment with an email address
+	Scenario: New user hitting enrollment with a new email address
 		Given a client without a session
 		When I hit the enrollment form with "heath@borders.com"
-		Then I should get a 200 response
+		Then I should get a response with a status code of 200
 		And there should be 1 session in the database for email "heath@borders.com"
 	
 	@wip

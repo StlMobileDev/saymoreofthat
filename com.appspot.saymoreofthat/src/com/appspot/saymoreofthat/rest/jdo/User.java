@@ -1,5 +1,6 @@
 package com.appspot.saymoreofthat.rest.jdo;
 
+import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -14,7 +15,9 @@ import com.google.appengine.api.datastore.Email;
 import com.google.appengine.api.datastore.Key;
 
 @PersistenceCapable(identityType = IdentityType.APPLICATION)
-public class User {
+public class User implements Serializable {
+	private static final long serialVersionUID = 1L;
+	
 	@PrimaryKey
     @Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
     private Key key;
