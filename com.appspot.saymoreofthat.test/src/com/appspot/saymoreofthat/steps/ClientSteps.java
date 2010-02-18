@@ -1,9 +1,8 @@
 package com.appspot.saymoreofthat.steps;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import javax.ws.rs.core.MediaType;
@@ -12,10 +11,15 @@ import javax.ws.rs.core.UriBuilder;
 
 import junit.framework.Assert;
 
+import com.appspot.saymoreofthat.rest.jdo.Session;
 import com.appspot.saymoreofthat.rest.jdo.User;
+import com.google.appengine.api.datastore.Email;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientRequest;
 import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.GenericType;
+import com.sun.jersey.api.client.config.ClientConfig;
+import com.sun.jersey.api.client.config.DefaultClientConfig;
 import com.sun.jersey.api.representation.Form;
 
 import cuke4duke.Before;
@@ -30,7 +34,11 @@ public class ClientSteps {
 
 	@Before
 	public void resetDatabase() {
-		client = Client.create();
+		ClientConfig clientConfig = new DefaultClientConfig();
+		clientConfig.getClasses()
+				.add(SerializableMessageBodyReaderWriter.class);
+		client = Client.create(clientConfig);
+
 		client.setFollowRedirects(false);
 		Form loginForm = new Form();
 		loginForm.add("email", "test@example.com");
@@ -48,7 +56,7 @@ public class ClientSteps {
 			URI resetUri = UriBuilder.fromUri(
 					"http://localhost:8888/admin/reset").build();
 			ClientRequest resetClientRequest = adminClientRequest(resetUri,
-					"POST");
+					"POST", MediaType.APPLICATION_FORM_URLENCODED_TYPE);
 			ClientResponse resetClientResponse = handleAdminClientRequest(resetClientRequest);
 			if (resetClientResponse.getStatus() != 200) {
 				throw new AssertionError("Resetting database failed while "
@@ -64,6 +72,25 @@ public class ClientSteps {
 
 	@Given("^a client without a session$")
 	public void clientWithoutASession() {
+	}
+
+	@Given("^a user in the database with session \"(.*)\" and email \"(.*)\"$")
+	public void userInTheDatabaseWithSessionAndEmail(String session,
+			String email) {
+		User user = new User(new Email(email));
+		user.getSessions().add(new Session(user, session));
+		URI uri = UriBuilder.fromPath("http://localhost:8888/admin/pushUsers")
+				.build();
+		ClientRequest clientRequest = adminClientRequest(uri, "POST",
+				MediaType.APPLICATION_OCTET_STREAM_TYPE);
+		clientRequest
+				.setEntity(new ArrayList<User>(Collections.singleton(user)));
+		ClientResponse clientResponse = handleAdminClientRequest(clientRequest);
+		if (clientResponse.getStatus() != 200) {
+			throw new AssertionError(
+					"Pushing user resulted in unexpected status: "
+							+ clientResponse.getStatus());
+		}
 	}
 
 	@When("^I hit the enrollment form with \"(.*)\"$")
@@ -86,44 +113,30 @@ public class ClientSteps {
 	public void thereShouldBeOneSessionInTheDatabaseForEmail(String email) {
 		URI uri = UriBuilder.fromUri("http://localhost:8888/admin/dumpUsers")
 				.build();
-		ClientRequest clientRequest = adminClientRequest(uri, "GET");
+		ClientRequest clientRequest = adminClientRequest(uri, "GET",
+				MediaType.TEXT_PLAIN_TYPE);
 		ClientResponse clientResponse = handleAdminClientRequest(clientRequest);
-		ObjectInputStream objectInputStream = null;
-		try {
-			objectInputStream = new ObjectInputStream(clientResponse
-					.getEntityInputStream());
-			List<User> users = (List<User>) objectInputStream.readObject();
-			for (User user : users) {
-				if (email.equals(user.getEmail().getEmail())) {
-					if (user.getSessions().size() == 1) {
-						return;
-					} else {
-						throw new AssertionError(
-								"Expected 1 session, but found "
-										+ user.getSessions().size());
-					}
-				}
-			}
-
-			throw new AssertionError("A user does not exist with email: "
-					+ email);
-		} catch (IOException ioException) {
-			throw new RuntimeException(ioException);
-		} catch (ClassNotFoundException classNotFoundException) {
-			throw new RuntimeException(classNotFoundException);
-		} finally {
-			if (objectInputStream != null) {
-				try {
-					objectInputStream.close();
-				} catch (IOException ioException) {
+		List<User> users = clientResponse
+				.getEntity(new GenericType<List<User>>() {
+				});
+		for (User user : users) {
+			if (email.equals(user.getEmail().getEmail())) {
+				if (user.getSessions().size() == 1) {
+					return;
+				} else {
+					throw new AssertionError("Expected 1 session, but found "
+							+ user.getSessions().size());
 				}
 			}
 		}
+
+		throw new AssertionError("A user does not exist with email: " + email);
 	}
 
-	private ClientRequest adminClientRequest(URI uri, String method) {
-		ClientRequest.Builder clientRequestBuilder = ClientRequest
-				.create();
+	private ClientRequest adminClientRequest(URI uri, String method,
+			MediaType mediaType) {
+		ClientRequest.Builder clientRequestBuilder = ClientRequest.create()
+				.type(mediaType);
 		for (NewCookie newCookie : adminNewCookies) {
 			clientRequestBuilder.cookie(newCookie.toCookie());
 		}

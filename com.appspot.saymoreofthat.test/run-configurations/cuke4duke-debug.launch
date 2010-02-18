@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<launchConfiguration type="org.eclipse.ui.externaltools.ProgramLaunchConfigurationType">
+<listAttribute key="org.eclipse.debug.ui.favoriteGroups">
+<listEntry value="org.eclipse.ui.externaltools.launchGroup"/>
+</listAttribute>
+<stringAttribute key="org.eclipse.ui.externaltools.ATTR_LOCATION" value="/usr/local/bin/jruby"/>
+<stringAttribute key="org.eclipse.ui.externaltools.ATTR_TOOL_ARGUMENTS" value="-J-Xdebug -J-Xnoagent -J-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=4000 -S cuke4duke --jars ${eclipse_home}/plugins/org.junit4_4.5.0.v20090824 --jars ${eclipse_home}/plugins/com.google.appengine.eclipse.sdkbundle.1.3.0_1.3.0.v200912141120/appengine-java-sdk-1.3.0/lib/shared --jars com.appspot.saymoreofthat/war/WEB-INF/lib --jars com.appspot.saymoreofthat.test/lib --require com.appspot.saymoreofthat/war/WEB-INF/classes --require com.appspot.saymoreofthat.test/bin com.appspot.saymoreofthat.test/features"/>
+<stringAttribute key="org.eclipse.ui.externaltools.ATTR_WORKING_DIRECTORY" value="${workspace_loc}"/>
+</launchConfiguration>

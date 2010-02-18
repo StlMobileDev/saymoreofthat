@@ -20,7 +20,7 @@ Feature: User Enrollment
 	
 	@wip
 	Scenario: Existing client with session re-registers should get 500
-		Given a session in the database with sesisonid "sessionid" and email "heath@borders.com"
+		Given a user in the database with session "session" and email "heath@borders.com"
 		And a client with the session "sessionid"
 		When I hit the enrollment form with "heath@borders.com"
 		Then I should get a 500

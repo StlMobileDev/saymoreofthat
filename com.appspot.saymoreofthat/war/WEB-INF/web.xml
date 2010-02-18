@@ -21,6 +21,10 @@ http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
 		<servlet-name>DumpUsers</servlet-name>
 		<servlet-class>com.appspot.saymoreofthat.admin.DumpUsersServlet</servlet-class>
 	</servlet>
+	<servlet>
+		<servlet-name>PushUsers</servlet-name>
+		<servlet-class>com.appspot.saymoreofthat.admin.PushUsersServlet</servlet-class>
+	</servlet>
 	<filter>
 		<filter-name>AdminUser</filter-name>
 		<filter-class>com.appspot.saymoreofthat.admin.AdminUserFilter</filter-class>
@@ -36,6 +40,10 @@ http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
 	<servlet-mapping>
 		<servlet-name>DumpUsers</servlet-name>
 		<url-pattern>/admin/dumpUsers</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>PushUsers</servlet-name>
+		<url-pattern>/admin/pushUsers</url-pattern>
 	</servlet-mapping>
 	<filter-mapping>
 		<filter-name>AdminUser</filter-name>

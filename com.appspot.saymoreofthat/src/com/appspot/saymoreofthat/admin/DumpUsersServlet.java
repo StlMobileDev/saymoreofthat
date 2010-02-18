@@ -28,10 +28,18 @@ public class DumpUsersServlet extends HttpServlet {
 			resp.setContentType(MediaType.APPLICATION_OCTET_STREAM);
 			ObjectOutputStream objectOutputStream = new ObjectOutputStream(resp
 					.getOutputStream());
-			Query userQuery = persistenceManager.newQuery(User.class);
-			userQuery.getFetchPlan().setFetchSize(FetchPlan.FETCH_SIZE_GREEDY);
-			List<User> users = (List<User>) userQuery.execute();
-			objectOutputStream.writeObject(new ArrayList<User>(users));
+			try {
+				Query userQuery = persistenceManager.newQuery(User.class);
+				userQuery.getFetchPlan().setFetchSize(
+						FetchPlan.FETCH_SIZE_GREEDY);
+				List<User> users = (List<User>) userQuery.execute();
+				objectOutputStream.writeObject(new ArrayList<User>(users));
+			} finally {
+				try {
+					objectOutputStream.close();
+				} catch (IOException ioException) {
+				}
+			}
 		} finally {
 			persistenceManager.close();
 		}
