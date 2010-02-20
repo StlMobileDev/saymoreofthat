@@ -40,4 +40,9 @@ public class Session implements Serializable {
 	public Key getKey() {
 		return key;
 	}
+
+	@Override
+	public String toString() {
+		return "Session [key=" + key + ", sessionId=" + sessionId + "]";
+	}
 }

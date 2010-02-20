@@ -31,38 +31,45 @@ public class UserResource {
 	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
 	public Response newUser(@FormParam("email") String emailValue,
 			@Context HttpServletRequest httpServletRequest) {
-		PersistenceManager persistenceManager = PMF.getPersistenceManager();
 		final Response response;
-		try {
-			final Email email = new Email(emailValue);
-			Query userByEmailQuery = persistenceManager.newQuery(User.class);
-			userByEmailQuery
-					.declareParameters("com.google.appengine.api.datastore.Email emailParam");
-			userByEmailQuery.setFilter("email == emailParam");
-			List<User> oldUsersByEmail = (List<User>) userByEmailQuery
-					.execute(email);
-			if (oldUsersByEmail.isEmpty()) {
-				User user = new User(email);
-				Session session = new Session(user, httpServletRequest
-						.getSession(true).getId());
-				user.getSessions().add(session);
-				Transaction transaction = persistenceManager.currentTransaction();
-				try {
-					transaction.begin();
-					persistenceManager.makePersistent(user);
-					transaction.commit();
-				} finally {
-					if (transaction.isActive()) {
-						transaction.rollback();
+		if (emailValue.length() == 0) {
+			response = Response.serverError().build();
+		} else {
+			PersistenceManager persistenceManager = PMF.getPersistenceManager();
+			
+			try {
+				final Email email = new Email(emailValue);
+				Query userByEmailQuery = persistenceManager
+						.newQuery(User.class);
+				userByEmailQuery
+						.declareParameters("com.google.appengine.api.datastore.Email emailParam");
+				userByEmailQuery.setFilter("email == emailParam");
+				List<User> oldUsersByEmail = (List<User>) userByEmailQuery
+						.execute(email);
+				if (oldUsersByEmail.isEmpty()) {
+					User user = new User(email);
+					Session session = new Session(user, httpServletRequest
+							.getSession(true).getId());
+					user.getSessions().add(session);
+					Transaction transaction = persistenceManager
+							.currentTransaction();
+					try {
+						transaction.begin();
+						persistenceManager.makePersistent(user);
+						transaction.commit();
+					} finally {
+						if (transaction.isActive()) {
+							transaction.rollback();
+						}
 					}
+
+					response = Response.ok().build();
+				} else {
+					response = Response.serverError().build();
 				}
-				
-				response = Response.ok().build();
-			} else {
-				response = Response.serverError().build();
+			} finally {
+				persistenceManager.close();
 			}
-		} finally {
-			persistenceManager.close();
 		}
 
 		return response;
@@ -85,7 +92,8 @@ public class UserResource {
 						.newQuery(Session.class);
 				sessionBySessionIdQuery
 						.declareParameters("String sessionIdParam");
-				sessionBySessionIdQuery.setFilter("sessionId == sessionIdParam");
+				sessionBySessionIdQuery
+						.setFilter("sessionId == sessionIdParam");
 				List<Session> sessionsBySessionId = (List<Session>) sessionBySessionIdQuery
 						.execute(httpSession.getId());
 				if (sessionsBySessionId.isEmpty()) {
@@ -95,8 +103,8 @@ public class UserResource {
 					Session sessionWithSessionId = sessionsBySessionId.get(0);
 					User user = sessionWithSessionId.getUser();
 					userResponse.email = user.getEmail();
-					userResponse.sessions = new ArrayList<String>(user.getSessions()
-							.size());
+					userResponse.sessions = new ArrayList<String>(user
+							.getSessions().size());
 					for (Session session : user.getSessions()) {
 						userResponse.sessions.add(session.getSessionId());
 					}

@@ -3,7 +3,9 @@ package com.appspot.saymoreofthat.steps;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.NewCookie;
@@ -13,7 +15,6 @@ import junit.framework.Assert;
 
 import com.appspot.saymoreofthat.rest.jdo.Session;
 import com.appspot.saymoreofthat.rest.jdo.User;
-import com.google.appengine.api.datastore.Email;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientRequest;
 import com.sun.jersey.api.client.ClientResponse;
@@ -29,6 +30,7 @@ import cuke4duke.When;
 
 public class ClientSteps {
 	private Client client;
+	private Map<String, List<NewCookie>> sessionKeyToNewCookies = new HashMap<String, List<NewCookie>>();
 	private List<NewCookie> adminNewCookies = new ArrayList<NewCookie>();
 	private ClientResponse clientResponse;
 
@@ -74,34 +76,21 @@ public class ClientSteps {
 	public void clientWithoutASession() {
 	}
 
-	@Given("^a user in the database with session \"(.*)\" and email \"(.*)\"$")
-	public void userInTheDatabaseWithSessionAndEmail(String session,
-			String email) {
-		User user = new User(new Email(email));
-		user.getSessions().add(new Session(user, session));
-		URI uri = UriBuilder.fromPath("http://localhost:8888/admin/pushUsers")
-				.build();
-		ClientRequest clientRequest = adminClientRequest(uri, "POST",
-				MediaType.APPLICATION_OCTET_STREAM_TYPE);
-		clientRequest
-				.setEntity(new ArrayList<User>(Collections.singleton(user)));
-		ClientResponse clientResponse = handleAdminClientRequest(clientRequest);
-		if (clientResponse.getStatus() != 200) {
-			throw new AssertionError(
-					"Pushing user resulted in unexpected status: "
-							+ clientResponse.getStatus());
-		}
+	@Given("^a client with session \"(.*)\"$")
+	public void clientWithSession(String sessionKey) {
+		enrollUser(sessionKey, "");
 	}
 
-	@When("^I hit the enrollment form with \"(.*)\"$")
-	public void hitTheEnrollmentFormWith(String email) {
-		Form form = new Form();
-		form.add("email", email);
-		URI uri = UriBuilder.fromUri("http://localhost:8888/rest/users/new")
-				.build();
-		ClientRequest clientRequest = ClientRequest.create().entity(form)
-				.build(uri, "POST");
-		clientResponse = client.handle(clientRequest);
+	@Given("^a user in the database with session \"(.*)\" and email \"(.*)\"$")
+	public void userInTheDatabaseWithSessionAndEmail(String sessionKey,
+			String email) {
+		enrollUser(sessionKey, email);
+	}
+
+	@When("^I hit the enrollment form with email \"(.*)\" and session \"(.*)\"$")
+	public void hitTheEnrollmentFormWithEmailAndSessionKey(String email,
+			String sessionKey) {
+		clientResponse = enrollUser(sessionKey, email);
 	}
 
 	@Then("^I should get a response with a status code of (\\d+)$")
@@ -109,28 +98,107 @@ public class ClientSteps {
 		Assert.assertEquals(statusCode, clientResponse.getStatus());
 	}
 
-	@Then("there should be 1 session in the database for email \"(.*)\"")
-	public void thereShouldBeOneSessionInTheDatabaseForEmail(String email) {
+	@Then("^session \"(.*)\" should be associated with email \"(.*)\"$")
+	public void sessionKeyShouldBeAssociatedWithEmail(String sessionKey,
+			String email) {
+		List<User> users = fetchUsers();
+		User emailUser = null;
+		for (User user : users) {
+			if (email.equals(user.getEmail().getEmail())) {
+				emailUser = user;
+				break;
+			}
+		}
+
+		if (emailUser == null) {
+			throw new AssertionError("A user does not exist with email: "
+					+ email);
+		}
+
+		List<NewCookie> newCookies = sessionKeyToNewCookies.get(sessionKey);
+		if (newCookies == null) {
+			throw new AssertionError("No cookies exist for session: "
+					+ sessionKey);
+		}
+
+		NewCookie sessionNewCookie = null;
+		for (NewCookie newCookie : newCookies) {
+			if (newCookie.getName().equals("JSESSIONID")) {
+				sessionNewCookie = newCookie;
+				break;
+			}
+		}
+
+		if (sessionNewCookie == null) {
+			throw new AssertionError("No session cookie exists for session: "
+					+ sessionKey);
+		}
+
+		Session sessionKeySession = null;
+		for (Session session : emailUser.getSessions()) {
+			if (session.getSessionId().equals(sessionNewCookie.getValue())) {
+				sessionKeySession = session;
+				break;
+			}
+		}
+
+		Assert.assertNotNull("No sessionIds matched session " + sessionKey
+				+ "'s value: " + sessionNewCookie.getValue()
+				+ ".  User contains sessions: " + emailUser.getSessions(),
+				sessionKeySession);
+	}
+
+	@Then("^there should be no users in the database$")
+	public void thereShouldBeNoUsersInTheDatabase() {
+		List<User> users = fetchUsers();
+
+		Assert.assertEquals(Collections.emptyList(), users);
+	}
+
+	private List<User> fetchUsers() {
 		URI uri = UriBuilder.fromUri("http://localhost:8888/admin/dumpUsers")
 				.build();
 		ClientRequest clientRequest = adminClientRequest(uri, "GET",
 				MediaType.TEXT_PLAIN_TYPE);
 		ClientResponse clientResponse = handleAdminClientRequest(clientRequest);
-		List<User> users = clientResponse
-				.getEntity(new GenericType<List<User>>() {
-				});
-		for (User user : users) {
-			if (email.equals(user.getEmail().getEmail())) {
-				if (user.getSessions().size() == 1) {
-					return;
-				} else {
-					throw new AssertionError("Expected 1 session, but found "
-							+ user.getSessions().size());
-				}
+		return clientResponse.getEntity(new GenericType<List<User>>() {
+		});
+	}
+
+	private ClientResponse enrollUser(String sessionKey, String email) {
+		Form form = new Form();
+		form.add("email", email);
+		URI uri = UriBuilder.fromUri("http://localhost:8888/rest/users/new")
+				.build();
+		ClientRequest clientRequest = clientRequest(uri, "POST", sessionKey);
+		clientRequest.setEntity(form);
+		return handleClientRequest(clientRequest, sessionKey);
+	}
+
+	private ClientRequest clientRequest(URI uri, String method,
+			String sessionKey) {
+		ClientRequest.Builder clientRequestBuilder = ClientRequest.create();
+		List<NewCookie> newCookies = sessionKeyToNewCookies.get(sessionKey);
+		if (newCookies != null) {
+			for (NewCookie newCookie : newCookies) {
+				clientRequestBuilder.cookie(newCookie.toCookie());
 			}
 		}
+		return clientRequestBuilder.build(uri, method);
+	}
 
-		throw new AssertionError("A user does not exist with email: " + email);
+	private ClientResponse handleClientRequest(ClientRequest clientRequest,
+			String sessionKey) {
+		ClientResponse clientResponse = client.handle(clientRequest);
+		List<NewCookie> newCookies = sessionKeyToNewCookies.get(sessionKey);
+		if (newCookies == null) {
+			newCookies = new ArrayList<NewCookie>();
+			sessionKeyToNewCookies.put(sessionKey, newCookies);
+		}
+
+		newCookies.addAll(clientResponse.getCookies());
+
+		return clientResponse;
 	}
 
 	private ClientRequest adminClientRequest(URI uri, String method,
