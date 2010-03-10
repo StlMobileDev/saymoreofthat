@@ -15,6 +15,7 @@ import junit.framework.Assert;
 
 import com.appspot.saymoreofthat.rest.jdo.Session;
 import com.appspot.saymoreofthat.rest.jdo.User;
+import com.google.appengine.api.datastore.Email;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientRequest;
 import com.sun.jersey.api.client.ClientResponse;
@@ -72,19 +73,31 @@ public class ClientSteps {
 		}
 	}
 
-	@Given("^a client without a session$")
-	public void clientWithoutASession() {
-	}
-
-	@Given("^a client with session \"(.*)\"$")
-	public void clientWithSession(String sessionKey) {
-		enrollUser(sessionKey, "");
-	}
-
 	@Given("^a user in the database with session \"(.*)\" and email \"(.*)\"$")
 	public void userInTheDatabaseWithSessionAndEmail(String sessionKey,
 			String email) {
-		enrollUser(sessionKey, email);
+		URI newSessionUri = UriBuilder.fromUri(
+				"http://localhost:8888/rest/users/session/new").build();
+		ClientRequest newSessionClientRequest = clientRequest(newSessionUri,
+				"POST", sessionKey);
+		ClientResponse newSessionClientResponse = handleClientRequest(newSessionClientRequest, sessionKey);
+		Assert.assertEquals(200, newSessionClientResponse.getStatus());
+
+		User user = new User(new Email(email));
+		List<NewCookie> sessionKeyNewCookies = sessionKeyToNewCookies
+				.get(sessionKey);
+		for (NewCookie newCookie : sessionKeyNewCookies) {
+			user.getSessions().add(new Session(user, newCookie.getValue()));
+		}
+
+		URI uri = UriBuilder.fromUri("http://localhost:8888/admin/pushUsers")
+				.build();
+		ClientRequest pushClientRequest = adminClientRequest(uri, "POST",
+				MediaType.APPLICATION_OCTET_STREAM_TYPE);
+		pushClientRequest.setEntity(new ArrayList<User>(Collections
+				.singleton(user)));
+		ClientResponse clientResponse = handleAdminClientRequest(pushClientRequest);
+		Assert.assertEquals(200, clientResponse.getStatus());
 	}
 
 	@When("^I hit the enrollment form with email \"(.*)\" and session \"(.*)\"$")
@@ -153,6 +166,11 @@ public class ClientSteps {
 		List<User> users = fetchUsers();
 
 		Assert.assertEquals(Collections.emptyList(), users);
+	}
+
+	@Then("^an email should be sent to \"(.*)\" with session \"(.*)\"$")
+	public void anEmailShouldBeSentWithSession(String email, String sessionKey) {
+		throw new AssertionError("Not Implemented");
 	}
 
 	private List<User> fetchUsers() {

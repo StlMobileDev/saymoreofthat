@@ -17,6 +17,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import com.appspot.saymoreofthat.rest.jaxb.UserResponse;
 import com.appspot.saymoreofthat.rest.jdo.PMF;
@@ -26,6 +27,13 @@ import com.google.appengine.api.datastore.Email;
 
 @Path("/users")
 public class UserResource {
+	@Path("/session/new")
+	@POST
+	public Response newSession(@Context HttpServletRequest httpServletRequest) {
+		httpServletRequest.getSession(true);
+		return Response.ok().build();
+	}
+
 	@Path("/new")
 	@POST
 	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -33,10 +41,10 @@ public class UserResource {
 			@Context HttpServletRequest httpServletRequest) {
 		final Response response;
 		if (emailValue.length() == 0) {
-			response = Response.serverError().build();
+			response = Response.status(Status.BAD_REQUEST).build();
 		} else {
 			PersistenceManager persistenceManager = PMF.getPersistenceManager();
-			
+
 			try {
 				final Email email = new Email(emailValue);
 				Query userByEmailQuery = persistenceManager
@@ -63,9 +71,28 @@ public class UserResource {
 						}
 					}
 
-					response = Response.ok().build();
+					response = Response.noContent().build();
 				} else {
-					response = Response.serverError().build();
+					if (oldUsersByEmail.size() > 1) {
+						response = Response.serverError().build();
+					} else {
+						User user = oldUsersByEmail.get(0);
+						boolean userHasSessionWithSessionId = false;
+						String sessionId = httpServletRequest.getSession(true)
+								.getId();
+						for (Session session : user.getSessions()) {
+							if (session.getSessionId().equals(sessionId)) {
+								userHasSessionWithSessionId = true;
+								break;
+							}
+						}
+
+						if (userHasSessionWithSessionId) {
+							response = Response.noContent().build();
+						} else {
+							response = Response.status(Status.ACCEPTED).build();
+						}
+					}
 				}
 			} finally {
 				persistenceManager.close();
