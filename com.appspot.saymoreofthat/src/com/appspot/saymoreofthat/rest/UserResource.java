@@ -2,10 +2,17 @@ package com.appspot.saymoreofthat.rest;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
 import javax.jdo.Transaction;
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Transport;
+import javax.mail.internet.AddressException;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import javax.ws.rs.Consumes;
@@ -38,7 +45,8 @@ public class UserResource {
 	@POST
 	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
 	public Response newUser(@FormParam("email") String emailValue,
-			@Context HttpServletRequest httpServletRequest) {
+			@Context HttpServletRequest httpServletRequest)
+			throws AddressException, MessagingException {
 		final Response response;
 		if (emailValue.length() == 0) {
 			response = Response.status(Status.BAD_REQUEST).build();
@@ -90,6 +98,20 @@ public class UserResource {
 						if (userHasSessionWithSessionId) {
 							response = Response.noContent().build();
 						} else {
+							Properties props = new Properties();
+							javax.mail.Session mailSession = javax.mail.Session
+									.getDefaultInstance(props, null);
+
+							String msgBody = "...";
+
+							Message msg = new MimeMessage(mailSession);
+							msg.addRecipient(Message.RecipientType.TO,
+									new InternetAddress("fakeemail@fake.com"));
+							msg
+									.setSubject("Your Example.com account has been activated");
+							msg.setText(msgBody);
+							Transport.send(msg);
+
 							response = Response.status(Status.ACCEPTED).build();
 						}
 					}
