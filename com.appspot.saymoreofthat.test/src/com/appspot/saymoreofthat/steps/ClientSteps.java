@@ -1,5 +1,8 @@
 package com.appspot.saymoreofthat.steps;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,9 +16,11 @@ import javax.ws.rs.core.UriBuilder;
 
 import junit.framework.Assert;
 
+import com.appspot.saymoreofthat.rest.jdo.AddSessionRequest;
 import com.appspot.saymoreofthat.rest.jdo.Session;
 import com.appspot.saymoreofthat.rest.jdo.User;
 import com.google.appengine.api.datastore.Email;
+import com.google.appengine.api.datastore.KeyFactory;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientRequest;
 import com.sun.jersey.api.client.ClientResponse;
@@ -80,7 +85,8 @@ public class ClientSteps {
 				"http://localhost:8888/rest/users/session/new").build();
 		ClientRequest newSessionClientRequest = clientRequest(newSessionUri,
 				"POST", sessionKey);
-		ClientResponse newSessionClientResponse = handleClientRequest(newSessionClientRequest, sessionKey);
+		ClientResponse newSessionClientResponse = handleClientRequest(
+				newSessionClientRequest, sessionKey);
 		Assert.assertEquals(200, newSessionClientResponse.getStatus());
 
 		User user = new User(new Email(email));
@@ -169,8 +175,45 @@ public class ClientSteps {
 	}
 
 	@Then("^an email should be sent to \"(.*)\" with session \"(.*)\"$")
-	public void anEmailShouldBeSentWithSession(String email, String sessionKey) {
-		throw new AssertionError("Not Implemented");
+	public void anEmailShouldBeSentWithSession(String email, String sessionKey)
+			throws Exception {
+		File mailServiceLogFile = new File(
+				"/tmp/com.appspot.saymoreofthat-LocalMailService.log");
+		String mailServiceLog = "";
+		BufferedReader bufferedReader = new BufferedReader(new FileReader(
+				mailServiceLogFile));
+		for (String line = bufferedReader.readLine(); line != null; line = bufferedReader
+				.readLine()) {
+			mailServiceLog += line + "\n";
+		}
+
+		bufferedReader.close();
+
+		Assert.assertTrue("Log is missing To. Log:\n" + mailServiceLog,
+				mailServiceLog.contains("To: " + email));
+		List<User> users = fetchUsers();
+		String sessionKeyString = null;
+		String sessionId = sessionKeyToNewCookies.get(sessionKey).get(0)
+				.getValue();
+		for (User user : users) {
+			for (AddSessionRequest addSessionRequest : user
+					.getAddSessionRequests()) {
+				if (sessionId.equals(addSessionRequest.getSessionId())) {
+					sessionKeyString = KeyFactory.keyToString(addSessionRequest
+							.getKey());
+					break;
+				}
+			}
+		}
+
+		if (sessionKeyString == null) {
+			throw new AssertionError(
+					"No AddSessionRequest exists for sessionKey:" + sessionKey
+							+ "(" + sessionId + ")");
+		}
+
+		Assert.assertTrue("Log is missing session Key.  Log:\n"
+				+ mailServiceLog, mailServiceLog.contains(sessionKeyString));
 	}
 
 	private List<User> fetchUsers() {

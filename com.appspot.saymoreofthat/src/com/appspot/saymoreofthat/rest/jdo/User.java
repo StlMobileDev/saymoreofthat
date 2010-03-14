@@ -24,6 +24,10 @@ public class User implements Serializable {
 	
 	@Persistent(mappedBy="user")
 	@Element(dependent="true")
+	private Set<AddSessionRequest> addSessionRequests;
+	
+	@Persistent(mappedBy="user")
+	@Element(dependent="true")
 	private Set<Session> sessions;
 	
 	@Persistent
@@ -35,6 +39,7 @@ public class User implements Serializable {
 	
 	public User(Email email) {
 		this.email = email;
+		this.addSessionRequests = new HashSet<AddSessionRequest>();
 		this.sessions = new HashSet<Session>();
 		this.events = new HashSet<Event>();
 	}
@@ -49,6 +54,10 @@ public class User implements Serializable {
 	
 	public Set<Session> getSessions() {
 		return sessions;
+	}
+	
+	public Set<AddSessionRequest> getAddSessionRequests() {
+		return addSessionRequests;
 	}
 	
 	public Key getKey() {

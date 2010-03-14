@@ -7,6 +7,7 @@ import java.util.Properties;
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
 import javax.jdo.Transaction;
+import javax.mail.Address;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.Transport;
@@ -27,10 +28,12 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import com.appspot.saymoreofthat.rest.jaxb.UserResponse;
+import com.appspot.saymoreofthat.rest.jdo.AddSessionRequest;
 import com.appspot.saymoreofthat.rest.jdo.PMF;
 import com.appspot.saymoreofthat.rest.jdo.Session;
 import com.appspot.saymoreofthat.rest.jdo.User;
 import com.google.appengine.api.datastore.Email;
+import com.google.appengine.api.datastore.KeyFactory;
 
 @Path("/users")
 public class UserResource {
@@ -98,19 +101,36 @@ public class UserResource {
 						if (userHasSessionWithSessionId) {
 							response = Response.noContent().build();
 						} else {
-							Properties props = new Properties();
+							Transaction transaction = persistenceManager
+									.currentTransaction();
+							AddSessionRequest addSessionRequest = new AddSessionRequest(
+									user, sessionId);
+							try {
+								transaction.begin();
+								user.getAddSessionRequests().add(
+										addSessionRequest);
+								persistenceManager.makePersistent(user);
+								transaction.commit();
+							} finally {
+								if (transaction.isActive()) {
+									transaction.rollback();
+								}
+							}
+
 							javax.mail.Session mailSession = javax.mail.Session
-									.getDefaultInstance(props, null);
+									.getDefaultInstance(new Properties(), null);
 
-							String msgBody = "...";
-
-							Message msg = new MimeMessage(mailSession);
-							msg.addRecipient(Message.RecipientType.TO,
-									new InternetAddress("fakeemail@fake.com"));
-							msg
-									.setSubject("Your Example.com account has been activated");
-							msg.setText(msgBody);
-							Transport.send(msg);
+							Message message = new MimeMessage(mailSession);
+							message
+									.addFrom(new Address[] { new InternetAddress(
+											"stl.mobile.dev@gmail.com") });
+							message.addRecipient(Message.RecipientType.TO,
+									new InternetAddress(emailValue));
+							message
+									.setSubject("Say More of That: Allow Session?");
+							message.setText(KeyFactory
+									.keyToString(addSessionRequest.getKey()));
+							Transport.send(message);
 
 							response = Response.status(Status.ACCEPTED).build();
 						}
