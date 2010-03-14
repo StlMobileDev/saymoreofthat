@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.appspot.saymoreofthat.rest.jdo.AddSessionRequest;
 import com.appspot.saymoreofthat.rest.jdo.PMF;
 import com.appspot.saymoreofthat.rest.jdo.Session;
 import com.appspot.saymoreofthat.rest.jdo.User;
@@ -44,6 +45,12 @@ public class PushUsersServlet extends HttpServlet {
 							existingUser.getSessions().add(
 									new Session(existingUser, session
 											.getSessionId()));
+						}
+						for (AddSessionRequest addSessionRequest : user
+								.getAddSessionRequests()) {
+							existingUser.getAddSessionRequests().add(
+									new AddSessionRequest(existingUser,
+											addSessionRequest.getSessionId()));
 						}
 						persistenceManager.makePersistent(existingUser);
 					} else {

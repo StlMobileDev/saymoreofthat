@@ -81,13 +81,7 @@ public class ClientSteps {
 	@Given("^a user in the database with session \"(.*)\" and email \"(.*)\"$")
 	public void userInTheDatabaseWithSessionAndEmail(String sessionKey,
 			String email) {
-		URI newSessionUri = UriBuilder.fromUri(
-				"http://localhost:8888/rest/users/session/new").build();
-		ClientRequest newSessionClientRequest = clientRequest(newSessionUri,
-				"POST", sessionKey);
-		ClientResponse newSessionClientResponse = handleClientRequest(
-				newSessionClientRequest, sessionKey);
-		Assert.assertEquals(200, newSessionClientResponse.getStatus());
+		fetchNewSessionId(sessionKey);
 
 		User user = new User(new Email(email));
 		List<NewCookie> sessionKeyNewCookies = sessionKeyToNewCookies
@@ -96,14 +90,42 @@ public class ClientSteps {
 			user.getSessions().add(new Session(user, newCookie.getValue()));
 		}
 
+		pushUsers(new ArrayList<User>(Collections.singleton(user)));
+	}
+
+	private void pushUsers(List<User> users) {
 		URI uri = UriBuilder.fromUri("http://localhost:8888/admin/pushUsers")
 				.build();
 		ClientRequest pushClientRequest = adminClientRequest(uri, "POST",
 				MediaType.APPLICATION_OCTET_STREAM_TYPE);
-		pushClientRequest.setEntity(new ArrayList<User>(Collections
-				.singleton(user)));
+		pushClientRequest.setEntity(users);
 		ClientResponse clientResponse = handleAdminClientRequest(pushClientRequest);
 		Assert.assertEquals(200, clientResponse.getStatus());
+	}
+
+	private void fetchNewSessionId(String sessionKey) {
+		URI newSessionUri = UriBuilder.fromUri(
+				"http://localhost:8888/rest/users/session/new").build();
+		ClientRequest newSessionClientRequest = clientRequest(newSessionUri,
+				"POST", sessionKey);
+		ClientResponse newSessionClientResponse = handleClientRequest(
+				newSessionClientRequest, sessionKey);
+		Assert.assertEquals(200, newSessionClientResponse.getStatus());
+	}
+
+	@Given("^a requested session \"(.*)\" in the database for email \"(.*)\"$")
+	public void requestedSessionInTheDatabaseForEmail(String sessionKey,
+			String email) {
+		fetchNewSessionId(sessionKey);
+
+		String sessionId = sessionKeyToNewCookies.get(sessionKey).get(0)
+				.getValue();
+
+		User user = new User(new Email(email));
+		user.getAddSessionRequests()
+				.add(new AddSessionRequest(user, sessionId));
+
+		pushUsers(new ArrayList<User>(Collections.singleton(user)));
 	}
 
 	@When("^I hit the enrollment form with email \"(.*)\" and session \"(.*)\"$")
@@ -112,9 +134,104 @@ public class ClientSteps {
 		clientResponse = enrollUser(sessionKey, email);
 	}
 
+	@When("^I confirm session \"(.*)\"$")
+	public void confirmSession(String sessionKey) {
+		URI uri = UriBuilder.fromPath(
+				"http://localhost:8888/rest/users/session/confirm").build();
+		ClientRequest clientRequest = clientRequest(uri, "POST", sessionKey);
+		String addSessionRequestEncodedKey = fetchAddSessionRequestEncodedKeyForSessionKey(sessionKey);
+		Form form = new Form();
+		form.add("key", addSessionRequestEncodedKey);
+		clientRequest.setEntity(form);
+
+		clientResponse = handleClientRequest(clientRequest, sessionKey);
+	}
+
+	@When("^I deny session \"(.*)\"$")
+	public void denySession(String sessionKey) {
+		URI uri = UriBuilder.fromPath(
+				"http://localhost:8888/rest/users/session/deny").build();
+		ClientRequest clientRequest = clientRequest(uri, "POST", sessionKey);
+		String addSessionRequestEncodedKey = fetchAddSessionRequestEncodedKeyForSessionKey(sessionKey);
+		Form form = new Form();
+		form.add("key", addSessionRequestEncodedKey);
+		clientRequest.setEntity(form);
+
+		clientResponse = handleClientRequest(clientRequest, sessionKey);
+	}
+
+	@Then("^no requested sessions should exist in the database for email \"(.*)\"$")
+	public void noRequestedSessionsShouldExistInTheDatabaseForEmail(String email) {
+		List<User> users = fetchUsers();
+		User emailUser = null;
+		for (User user : users) {
+			if (email.equals(user.getEmail().getEmail())) {
+				emailUser = user;
+				break;
+			}
+		}
+
+		if (emailUser == null) {
+			throw new AssertionError("No user matches email: " + email);
+		}
+
+		Assert.assertEquals(Collections.emptySet(), emailUser
+				.getAddSessionRequests());
+	}
+
 	@Then("^I should get a response with a status code of (\\d+)$")
 	public void shouldGetAResponseWithAStatusCodeOf(int statusCode) {
 		Assert.assertEquals(statusCode, clientResponse.getStatus());
+	}
+
+	@Then("^session \"(.*)\" should not be associated with email \"(.*)\"$")
+	public void sessionKeyShouldNotBeAssociatedWithEmail(String sessionKey,
+			String email) {
+		List<User> users = fetchUsers();
+		User emailUser = null;
+		for (User user : users) {
+			if (email.equals(user.getEmail().getEmail())) {
+				emailUser = user;
+				break;
+			}
+		}
+
+		if (emailUser == null) {
+			throw new AssertionError("A user does not exist with email: "
+					+ email);
+		}
+
+		List<NewCookie> newCookies = sessionKeyToNewCookies.get(sessionKey);
+		if (newCookies == null) {
+			throw new AssertionError("No cookies exist for session: "
+					+ sessionKey);
+		}
+
+		NewCookie sessionNewCookie = null;
+		for (NewCookie newCookie : newCookies) {
+			if (newCookie.getName().equals("JSESSIONID")) {
+				sessionNewCookie = newCookie;
+				break;
+			}
+		}
+
+		if (sessionNewCookie == null) {
+			throw new AssertionError("No session cookie exists for session: "
+					+ sessionKey);
+		}
+
+		Session sessionKeySession = null;
+		for (Session session : emailUser.getSessions()) {
+			if (session.getSessionId().equals(sessionNewCookie.getValue())) {
+				sessionKeySession = session;
+				break;
+			}
+		}
+
+		Assert.assertNull("SessionIds matched session " + sessionKey
+				+ "'s value: " + sessionNewCookie.getValue()
+				+ ".  User contains sessions: " + emailUser.getSessions(),
+				sessionKeySession);
 	}
 
 	@Then("^session \"(.*)\" should be associated with email \"(.*)\"$")
@@ -191,29 +308,37 @@ public class ClientSteps {
 
 		Assert.assertTrue("Log is missing To. Log:\n" + mailServiceLog,
 				mailServiceLog.contains("To: " + email));
+		String addSessionRequestEncodedKey = fetchAddSessionRequestEncodedKeyForSessionKey(sessionKey);
+
+		Assert.assertTrue("Log is missing session Key.  Log:\n"
+				+ mailServiceLog, mailServiceLog
+				.contains(addSessionRequestEncodedKey));
+	}
+
+	private String fetchAddSessionRequestEncodedKeyForSessionKey(
+			String sessionKey) {
 		List<User> users = fetchUsers();
-		String sessionKeyString = null;
+		String addSessionRequestEncodedKey = null;
 		String sessionId = sessionKeyToNewCookies.get(sessionKey).get(0)
 				.getValue();
 		for (User user : users) {
 			for (AddSessionRequest addSessionRequest : user
 					.getAddSessionRequests()) {
 				if (sessionId.equals(addSessionRequest.getSessionId())) {
-					sessionKeyString = KeyFactory.keyToString(addSessionRequest
-							.getKey());
+					addSessionRequestEncodedKey = KeyFactory
+							.keyToString(addSessionRequest.getKey());
 					break;
 				}
 			}
 		}
 
-		if (sessionKeyString == null) {
+		if (addSessionRequestEncodedKey == null) {
 			throw new AssertionError(
 					"No AddSessionRequest exists for sessionKey:" + sessionKey
 							+ "(" + sessionId + ")");
 		}
 
-		Assert.assertTrue("Log is missing session Key.  Log:\n"
-				+ mailServiceLog, mailServiceLog.contains(sessionKeyString));
+		return addSessionRequestEncodedKey;
 	}
 
 	private List<User> fetchUsers() {

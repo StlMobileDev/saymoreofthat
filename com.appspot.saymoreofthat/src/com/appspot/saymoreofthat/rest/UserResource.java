@@ -37,6 +37,83 @@ import com.google.appengine.api.datastore.KeyFactory;
 
 @Path("/users")
 public class UserResource {
+	@Path("/session/confirm")
+	@POST
+	public Response confirmAddSessionRequest(
+			@FormParam("key") String addSessionRequestKey) {
+		PersistenceManager persistenceManager = PMF.getPersistenceManager();
+
+		final Response response;
+		try {
+			Transaction transaction = persistenceManager.currentTransaction();
+
+			try {
+				transaction.begin();
+				AddSessionRequest addSessionRequest = persistenceManager
+						.getObjectById(AddSessionRequest.class, KeyFactory
+								.stringToKey(addSessionRequestKey));
+				if (addSessionRequest == null) {
+					response = Response.status(Status.BAD_REQUEST).build();
+				} else {
+					User user = addSessionRequest.getUser();
+					user.getSessions().add(new Session(user, addSessionRequest.getSessionId()));
+					user.getAddSessionRequests().remove(addSessionRequest);
+					
+					persistenceManager.makePersistent(user);
+					response = Response.status(Status.NO_CONTENT).build();
+				}
+				
+				transaction.commit();
+			} finally {
+				if (transaction.isActive()) {
+					transaction.rollback();
+				}
+			}
+		} finally {
+			persistenceManager.close();
+		}
+
+		return response;
+	}
+
+	@Path("/session/deny")
+	@POST
+	public Response denyAddSessionRequest(
+			@FormParam("key") String addSessionRequestKey) {
+		PersistenceManager persistenceManager = PMF.getPersistenceManager();
+
+		final Response response;
+		try {
+			Transaction transaction = persistenceManager.currentTransaction();
+
+			try {
+				transaction.begin();
+				AddSessionRequest addSessionRequest = persistenceManager
+						.getObjectById(AddSessionRequest.class, KeyFactory
+								.stringToKey(addSessionRequestKey));
+				if (addSessionRequest == null) {
+					response = Response.status(Status.BAD_REQUEST).build();
+				} else {
+					User user = addSessionRequest.getUser();
+					user.getAddSessionRequests().remove(addSessionRequest);
+					
+					persistenceManager.makePersistent(user);
+					response = Response.status(Status.NO_CONTENT).build();
+				}
+				
+				transaction.commit();
+			} finally {
+				if (transaction.isActive()) {
+					transaction.rollback();
+				}
+			}
+		} finally {
+			persistenceManager.close();
+		}
+
+		return response;
+	}
+
 	@Path("/session/new")
 	@POST
 	public Response newSession(@Context HttpServletRequest httpServletRequest) {

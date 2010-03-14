@@ -27,10 +27,27 @@ Feature: User Enrollment
 		And session "A" should be associated with email "heath@borders.com"
 		And session "B" should be associated with email "heath@borders.com"
 	
-	@wip
-	Scenario: New user registering for an already existing email
+	Scenario: User registering for an already existing email
 		Given a user in the database with session "A" and email "heath@borders.com"
 		When I hit the enrollment form with email "heath@borders.com" and session "B"
 		Then I should get a response with a status code of 202
 		And session "A" should be associated with email "heath@borders.com"
 		And an email should be sent to "heath@borders.com" with session "B"
+		
+	Scenario: User confirming a session given by email
+		Given a user in the database with session "A" and email "heath@borders.com"
+		And a requested session "B" in the database for email "heath@borders.com"
+		When I confirm session "B"
+		Then I should get a response with a status code of 204
+		And session "A" should be associated with email "heath@borders.com"
+		And session "B" should be associated with email "heath@borders.com"
+		And no requested sessions should exist in the database for email "heath@borders.com"
+	
+	Scenario: User denying a session given by email
+		Given a user in the database with session "A" and email "heath@borders.com"
+		And a requested session "B" in the database for email "heath@borders.com"
+		When I deny session "B"
+		Then I should get a response with a status code of 204
+		And session "A" should be associated with email "heath@borders.com"
+		And session "B" should not be associated with email "heath@borders.com"
+		And no requested sessions should exist in the database for email "heath@borders.com"
