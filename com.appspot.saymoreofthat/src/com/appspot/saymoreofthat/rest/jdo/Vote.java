@@ -1,7 +1,6 @@
 package com.appspot.saymoreofthat.rest.jdo;
 
 import java.io.Serializable;
-import java.util.Calendar;
 
 import javax.jdo.annotations.IdGeneratorStrategy;
 import javax.jdo.annotations.IdentityType;
@@ -14,24 +13,40 @@ import com.google.appengine.api.datastore.Key;
 @PersistenceCapable(identityType = IdentityType.APPLICATION)
 public class Vote implements Serializable {
 	private static final long serialVersionUID = 1L;
-	
+
 	@PrimaryKey
-    @Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
-    public Key key;
+	@Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
+	private Key key;
 
 	@Persistent
-	public Event event;
-	
+	private Event event;
+
 	@Persistent
-	public Calendar calendar;
-	
+	private long timeMillisUtc;
+
 	@Persistent
-	public Integer value;
-	
-	public Vote(Event event, Calendar calendar, Integer value) {
+	private int value;
+
+	public Vote(Event event, long timeMillisUtc, int value) {
 		super();
 		this.event = event;
-		this.calendar = calendar;
+		this.timeMillisUtc = timeMillisUtc;
 		this.value = value;
+	}
+
+	public Key getKey() {
+		return key;
+	}
+
+	public Event getEvent() {
+		return event;
+	}
+
+	public long getTimeMillisUtc() {
+		return timeMillisUtc;
+	}
+
+	public int getValue() {
+		return value;
 	}
 }

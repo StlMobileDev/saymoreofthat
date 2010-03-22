@@ -30,5 +30,6 @@
 	<classpathentry kind="lib" path="war/WEB-INF/lib/jaxb-api.jar" sourcepath="war/WEB-INF/lib/jaxb-api-src.zip"/>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/jaxb-impl.jar" sourcepath="war/WEB-INF/lib/jaxb-impl.src.zip"/>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/jsr173_1.0_api.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-lang-2.5.jar" sourcepath="commons-lang-2.5-sources.jar"/>
 	<classpathentry kind="output" path="war/WEB-INF/classes"/>
 </classpath>

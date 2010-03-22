@@ -33,6 +33,11 @@ public class DumpUsersServlet extends HttpServlet {
 				userQuery.getFetchPlan().setFetchSize(
 						FetchPlan.FETCH_SIZE_GREEDY);
 				List<User> users = (List<User>) userQuery.execute();
+//				for (User user : users) {
+//					for (Event event : user.getEvents()) {
+//						event.getVotes();
+//					}
+//				}
 				objectOutputStream.writeObject(new ArrayList<User>(users));
 			} finally {
 				try {

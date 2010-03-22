@@ -38,6 +38,7 @@ import com.google.appengine.api.datastore.KeyFactory;
 @Path("/users")
 public class UserResource {
 	@Path("/session/confirm")
+	@Consumes(value = { MediaType.APPLICATION_FORM_URLENCODED })
 	@POST
 	public Response confirmAddSessionRequest(
 			@FormParam("key") String addSessionRequestKey) {
@@ -56,13 +57,16 @@ public class UserResource {
 					response = Response.status(Status.BAD_REQUEST).build();
 				} else {
 					User user = addSessionRequest.getUser();
-					user.getSessions().add(new Session(user, addSessionRequest.getSessionId()));
+					user.getSessions()
+							.add(
+									new Session(user, addSessionRequest
+											.getSessionId()));
 					user.getAddSessionRequests().remove(addSessionRequest);
-					
+
 					persistenceManager.makePersistent(user);
 					response = Response.status(Status.NO_CONTENT).build();
 				}
-				
+
 				transaction.commit();
 			} finally {
 				if (transaction.isActive()) {
@@ -77,6 +81,7 @@ public class UserResource {
 	}
 
 	@Path("/session/deny")
+	@Consumes(value = { MediaType.APPLICATION_FORM_URLENCODED })
 	@POST
 	public Response denyAddSessionRequest(
 			@FormParam("key") String addSessionRequestKey) {
@@ -96,11 +101,11 @@ public class UserResource {
 				} else {
 					User user = addSessionRequest.getUser();
 					user.getAddSessionRequests().remove(addSessionRequest);
-					
+
 					persistenceManager.makePersistent(user);
 					response = Response.status(Status.NO_CONTENT).build();
 				}
-				
+
 				transaction.commit();
 			} finally {
 				if (transaction.isActive()) {
@@ -115,6 +120,7 @@ public class UserResource {
 	}
 
 	@Path("/session/new")
+	@Consumes(value = { MediaType.APPLICATION_FORM_URLENCODED })
 	@POST
 	public Response newSession(@Context HttpServletRequest httpServletRequest) {
 		httpServletRequest.getSession(true);
@@ -122,8 +128,8 @@ public class UserResource {
 	}
 
 	@Path("/new")
-	@POST
 	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+	@POST
 	public Response newUser(@FormParam("email") String emailValue,
 			@Context HttpServletRequest httpServletRequest)
 			throws AddressException, MessagingException {

@@ -51,3 +51,16 @@ Feature: User Enrollment
 		And session "A" should be associated with email "heath@borders.com"
 		And session "B" should not be associated with email "heath@borders.com"
 		And no requested sessions should exist in the database for email "heath@borders.com"
+		
+	Scenario: User creates an event
+		Given a user in the database with session "A" and email "heath@borders.com"
+		When I use session "A" to add event "Event" starting on "2008-09-02-1747" in time zone "America/Chicago"
+		Then I should get a response with a status code of 303
+		And the returned URI should point to an event named "Event" starting on "2008-09-02-1747" in time zone "America/Chicago"
+		
+	Scenario: User ends an event
+		Given a user in the database with session "A" and email "heath@borders.com"
+		And an event named "Event" starting on "2008-09-02-1747" in time zone "America/Chicago"
+		When I use session "A" to end the event
+		Then I should get a response with a status code of 204
+		And the end date of the even should be non-zero

@@ -4,11 +4,14 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.net.URI;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.NewCookie;
@@ -16,6 +19,7 @@ import javax.ws.rs.core.UriBuilder;
 
 import junit.framework.Assert;
 
+import com.appspot.saymoreofthat.rest.jaxb.EventResponse;
 import com.appspot.saymoreofthat.rest.jdo.AddSessionRequest;
 import com.appspot.saymoreofthat.rest.jdo.Session;
 import com.appspot.saymoreofthat.rest.jdo.User;
@@ -155,6 +159,25 @@ public class ClientSteps {
 		String addSessionRequestEncodedKey = fetchAddSessionRequestEncodedKeyForSessionKey(sessionKey);
 		Form form = new Form();
 		form.add("key", addSessionRequestEncodedKey);
+		clientRequest.setEntity(form);
+
+		clientResponse = handleClientRequest(clientRequest, sessionKey);
+	}
+
+	@When("^I use session \"(.*)\" to add event \"(.*)\" starting on \"(.*)\" in time zone \"(.*)\"$")
+	public void useSessionToAddEventNamedStartingOn(String sessionKey,
+			String eventName, String startTime, String timeZoneId)
+			throws ParseException {
+		long startTimeMillis = new SimpleDateFormat("yyyy-MM-dd-HHmm").parse(
+				startTime).getTime();
+
+		URI uri = UriBuilder.fromPath("http://localhost:8888/rest/events/new")
+				.build();
+		ClientRequest clientRequest = clientRequest(uri, "POST", sessionKey);
+		Form form = new Form();
+		form.add("name", eventName);
+		form.add("startTimeMillis", Long.toString(startTimeMillis));
+		form.add("timeZoneId", timeZoneId);
 		clientRequest.setEntity(form);
 
 		clientResponse = handleClientRequest(clientRequest, sessionKey);
@@ -313,6 +336,23 @@ public class ClientSteps {
 		Assert.assertTrue("Log is missing session Key.  Log:\n"
 				+ mailServiceLog, mailServiceLog
 				.contains(addSessionRequestEncodedKey));
+	}
+
+	@Then("^the returned URI should point to an event named \"(.*)\" starting on \"(.*)\" in time zone \"(.*)\"$")
+	public void theReturnedUriShouldPointToAnEventNamedStartingOn(String name,
+			String startTime, String timeZoneId) throws ParseException {
+		long startTimeMillis = new SimpleDateFormat("yyyy-MM-dd-HHmm").parse(
+				startTime).getTime();
+		long startTimeMillisUtc = startTimeMillis
+				- TimeZone.getTimeZone(timeZoneId).getOffset(startTimeMillis);
+
+		URI uri = clientResponse.getLocation();
+		ClientRequest clientRequest = ClientRequest.create().build(uri, "GET");
+		ClientResponse clientResponse = client.handle(clientRequest);
+		EventResponse eventResponse = clientResponse.getEntity(EventResponse.class);
+		
+		Assert.assertEquals(name, eventResponse.name);
+		Assert.assertEquals(startTimeMillisUtc, eventResponse.startTimeMillisUtc);
 	}
 
 	private String fetchAddSessionRequestEncodedKeyForSessionKey(

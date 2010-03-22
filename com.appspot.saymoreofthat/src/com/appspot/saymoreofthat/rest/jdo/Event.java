@@ -1,7 +1,6 @@
 package com.appspot.saymoreofthat.rest.jdo;
 
 import java.io.Serializable;
-import java.util.Calendar;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -20,29 +19,57 @@ public class Event implements Serializable {
 
 	@PrimaryKey
     @Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
-    public Key key;
+    private Key key;
 	
 	@Persistent
-	public User user;
+	private User user;
 
 	@Persistent
-	public String name;
+	private String name;
 	
 	@Persistent
-	public Calendar startCalendar;
+	private long startTimeMillisUtc;
 	
 	@Persistent
-	public Calendar endCalendar;
+	private long endTimeMillisUtc;
 	
 	@Persistent(mappedBy="event")
 	@Element(dependent="true")
-	public Set<Vote> votes;
+	private Set<Vote> votes;
 	
-	public Event(User user, String name, Calendar startCalendar) {
+	public Event(User user, String name, long startTimeMillisUtc) {
 		super();
 		this.user = user;
 		this.name = name;
-		this.startCalendar = startCalendar;
+		this.startTimeMillisUtc = startTimeMillisUtc;
 		this.votes = new HashSet<Vote>();
+	}
+
+	public Key getKey() {
+		return key;
+	}
+
+	public User getUser() {
+		return user;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public long getStartTimeMillisUtc() {
+		return startTimeMillisUtc;
+	}
+
+	public Set<Vote> getVotes() {
+		return votes;
+	}
+	
+	public long getEndTimeMillisUtc() {
+		return endTimeMillisUtc;
+	}
+
+	public void setEndTimeMillisGmt(long endTimeMillisGmt) {
+		this.endTimeMillisUtc = endTimeMillisGmt;
 	}
 }
