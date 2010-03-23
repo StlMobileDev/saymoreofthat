@@ -20,6 +20,7 @@ import javax.ws.rs.core.UriBuilder;
 import junit.framework.Assert;
 
 import com.appspot.saymoreofthat.rest.jaxb.EventResponse;
+import com.appspot.saymoreofthat.rest.jaxb.VoteResponse;
 import com.appspot.saymoreofthat.rest.jdo.AddSessionRequest;
 import com.appspot.saymoreofthat.rest.jdo.Session;
 import com.appspot.saymoreofthat.rest.jdo.User;
@@ -132,6 +133,21 @@ public class ClientSteps {
 		pushUsers(new ArrayList<User>(Collections.singleton(user)));
 	}
 
+	@Given("^an event from session \"(.*)\" named \"(.*)\" starting on \"(.*)\" in time zone \"(.*)\"$")
+	public void eventFromSessionNamedStartingOnInTimeZone(String sessionKey,
+			String eventName, String startTime, String timeZoneId)
+			throws ParseException {
+		useSessionToAddEventNamedStartingOn(sessionKey, eventName, startTime,
+				timeZoneId);
+		clientResponse = null;
+	}
+
+	@Given("^event \"(.*)\" from session \"(.*)\" has ended$")
+	public void eventFromSessionHasEnded(String eventName, String sessionKey) {
+		useSessionToEndEventNamed(sessionKey, eventName);
+		clientResponse = null;
+	}
+
 	@When("^I hit the enrollment form with email \"(.*)\" and session \"(.*)\"$")
 	public void hitTheEnrollmentFormWithEmailAndSessionKey(String email,
 			String sessionKey) {
@@ -181,6 +197,49 @@ public class ClientSteps {
 		clientRequest.setEntity(form);
 
 		clientResponse = handleClientRequest(clientRequest, sessionKey);
+	}
+
+	@When("^I use session \"(.*)\" to end event \"(.*)\"$")
+	public void useSessionToEndEventNamed(String sessionKey, String eventName) {
+		EventResponse namedEventResponse = fetchEventResponseNamed(sessionKey,
+				eventName);
+
+		URI endUri = UriBuilder.fromPath("http://localhost:8888/rest/events/")
+				.path(namedEventResponse.id).path("end").build();
+		ClientRequest endClientRequest = clientRequest(endUri, "POST",
+				sessionKey);
+		clientResponse = handleClientRequest(endClientRequest, sessionKey);
+	}
+
+	@When("^I cast a vote of value \"(.*)\" from session \"(.*)\" for event \"(.*)\" from session \"(.*)\"$")
+	public void castVoteOfValueFromSessionForEventFromSession(
+			String rawVoteValue, String voteSessionKey, String eventName,
+			String eventSessionKey) {
+		EventResponse namedEventResponse = fetchEventResponseNamed(
+				eventSessionKey, eventName);
+		URI voteUri = UriBuilder.fromPath("http://localhost:8888/rest/events/")
+				.path(namedEventResponse.id).path("vote").path(rawVoteValue)
+				.build();
+		ClientRequest clientRequest = clientRequest(voteUri, "POST",
+				voteSessionKey);
+		clientResponse = handleClientRequest(clientRequest, voteSessionKey);
+	}
+
+	private EventResponse fetchEventResponseNamed(String sessionKey,
+			String eventName) throws AssertionError {
+		List<EventResponse> eventResponses = fetchEventResponses(sessionKey);
+		EventResponse namedEventResponse = null;
+		for (EventResponse eventResponse : eventResponses) {
+			if (eventName.equals(eventResponse.name)) {
+				namedEventResponse = eventResponse;
+				break;
+			}
+		}
+
+		if (namedEventResponse == null) {
+			throw new AssertionError("No event exists named: " + eventName);
+		}
+		return namedEventResponse;
 	}
 
 	@Then("^no requested sessions should exist in the database for email \"(.*)\"$")
@@ -349,10 +408,53 @@ public class ClientSteps {
 		URI uri = clientResponse.getLocation();
 		ClientRequest clientRequest = ClientRequest.create().build(uri, "GET");
 		ClientResponse clientResponse = client.handle(clientRequest);
-		EventResponse eventResponse = clientResponse.getEntity(EventResponse.class);
-		
+		EventResponse eventResponse = clientResponse
+				.getEntity(EventResponse.class);
+
 		Assert.assertEquals(name, eventResponse.name);
-		Assert.assertEquals(startTimeMillisUtc, eventResponse.startTimeMillisUtc);
+		Assert.assertEquals(startTimeMillisUtc,
+				eventResponse.startTimeMillisUtc);
+	}
+
+	@Then("^the end date of event \"(.*)\" on session \"(.*)\" should be within one minute of now$")
+	public void theEndDateOfEventOnSessionShouldBeWithinOneMinuteOfNow(
+			String eventName, String sessionKey) {
+		EventResponse namedEventResponse = fetchEventResponseNamed(sessionKey,
+				eventName);
+
+		long currentTimeMillis = System.currentTimeMillis();
+		Assert.assertTrue("End time : " + namedEventResponse.endTimeMillisUtc
+				+ " is not within 6000 of now: " + currentTimeMillis,
+				Math.abs(namedEventResponse.endTimeMillisUtc
+						- currentTimeMillis) < 6000);
+	}
+
+	@Then("^event \"(.*)\" from session \"(.*)\" should have a vote of value \"(.*)\" with a time within one minute of now$")
+	public void eventFromSessionShouldHaveVoteOfValueWithTimeWithinOneMinuteOfNow(
+			String eventName, String sessionKey, String rawVoteValue) {
+		long currentTimeMillis = System.currentTimeMillis();
+		int expectedVoteValue = Integer.parseInt(rawVoteValue);
+		EventResponse namedEventResponse = fetchEventResponseNamed(sessionKey,
+				eventName);
+
+		VoteResponse valuedVoteResponse = null;
+		for (VoteResponse voteResponse : namedEventResponse.votes) {
+			if (voteResponse.value == expectedVoteValue) {
+				valuedVoteResponse = voteResponse;
+				break;
+			}
+		}
+
+		if (valuedVoteResponse == null) {
+			throw new AssertionError("No votes contained value: "
+					+ expectedVoteValue);
+		}
+
+		Assert
+				.assertTrue("Vote time: " + valuedVoteResponse.timeMillisUtc
+						+ " is not within 6000 of now: " + currentTimeMillis,
+						Math.abs(valuedVoteResponse.timeMillisUtc
+								- currentTimeMillis) < 6000);
 	}
 
 	private String fetchAddSessionRequestEncodedKeyForSessionKey(
@@ -379,6 +481,18 @@ public class ClientSteps {
 		}
 
 		return addSessionRequestEncodedKey;
+	}
+
+	private List<EventResponse> fetchEventResponses(String sessionKey) {
+		URI listUri = UriBuilder.fromPath(
+				"http://localhost:8888/rest/events/list").build();
+		ClientRequest listClientRequest = clientRequest(listUri, "GET",
+				sessionKey);
+		ClientResponse listEventsClientResponse = handleClientRequest(
+				listClientRequest, sessionKey);
+		return listEventsClientResponse
+				.getEntity(new GenericType<List<EventResponse>>() {
+				});
 	}
 
 	private List<User> fetchUsers() {

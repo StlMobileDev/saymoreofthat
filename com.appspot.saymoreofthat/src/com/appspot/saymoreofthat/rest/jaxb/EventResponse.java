@@ -7,8 +7,9 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 
 @XmlRootElement
-@XmlType(propOrder = { "name", "startTimeMillisUtc", "endTimeMillisUtc", "votes" })
+@XmlType(propOrder = { "id", "name", "startTimeMillisUtc", "endTimeMillisUtc", "votes" })
 public class EventResponse {
+	public String id;
 	public String name;
 	public long startTimeMillisUtc;
 	public long endTimeMillisUtc;
