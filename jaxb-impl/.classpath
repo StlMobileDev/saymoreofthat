@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="lib" path="/com.appspot.saymoreofthat/war/WEB-INF/lib/jaxb-api.jar" sourcepath="/com.appspot.saymoreofthat/lib-sources/jaxb-api-src.zip"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
+	<classpathentry kind="lib" path="lib/FastInfoset.jar" sourcepath="lib/FastInfoset.src.zip"/>
+	<classpathentry kind="lib" path="lib/FastInfosetUtilities.jar" sourcepath="lib/FastInfosetUtilities.src.zip"/>
+	<classpathentry kind="lib" path="lib/stax-ex-1.0.jar" sourcepath="lib/stax-ex-1.0-sources.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

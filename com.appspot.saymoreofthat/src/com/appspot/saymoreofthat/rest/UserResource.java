@@ -17,7 +17,6 @@ import javax.mail.internet.MimeMessage;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -27,6 +26,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.appspot.saymoreofthat.rest.jaxb.AddSessionRequestKey;
+import com.appspot.saymoreofthat.rest.jaxb.NewUserRequest;
 import com.appspot.saymoreofthat.rest.jaxb.UserResponse;
 import com.appspot.saymoreofthat.rest.jdo.AddSessionRequest;
 import com.appspot.saymoreofthat.rest.jdo.PMF;
@@ -38,10 +39,10 @@ import com.google.appengine.api.datastore.KeyFactory;
 @Path("/users")
 public class UserResource {
 	@Path("/session/confirm")
-	@Consumes(value = { MediaType.APPLICATION_FORM_URLENCODED })
+	@Consumes(value = { MediaType.APPLICATION_JSON })
 	@POST
 	public Response confirmAddSessionRequest(
-			@FormParam("key") String addSessionRequestKey) {
+			AddSessionRequestKey addSessionRequestKey) {
 		PersistenceManager persistenceManager = PMF.getPersistenceManager();
 
 		final Response response;
@@ -52,7 +53,7 @@ public class UserResource {
 				transaction.begin();
 				AddSessionRequest addSessionRequest = persistenceManager
 						.getObjectById(AddSessionRequest.class, KeyFactory
-								.stringToKey(addSessionRequestKey));
+								.stringToKey(addSessionRequestKey.key));
 				if (addSessionRequest == null) {
 					response = Response.status(Status.BAD_REQUEST).build();
 				} else {
@@ -81,10 +82,10 @@ public class UserResource {
 	}
 
 	@Path("/session/deny")
-	@Consumes(value = { MediaType.APPLICATION_FORM_URLENCODED })
+	@Consumes(value = { MediaType.APPLICATION_JSON })
 	@POST
 	public Response denyAddSessionRequest(
-			@FormParam("key") String addSessionRequestKey) {
+			AddSessionRequestKey addSessionRequestKey) {
 		PersistenceManager persistenceManager = PMF.getPersistenceManager();
 
 		final Response response;
@@ -95,7 +96,7 @@ public class UserResource {
 				transaction.begin();
 				AddSessionRequest addSessionRequest = persistenceManager
 						.getObjectById(AddSessionRequest.class, KeyFactory
-								.stringToKey(addSessionRequestKey));
+								.stringToKey(addSessionRequestKey.key));
 				if (addSessionRequest == null) {
 					response = Response.status(Status.BAD_REQUEST).build();
 				} else {
@@ -120,7 +121,7 @@ public class UserResource {
 	}
 
 	@Path("/session/new")
-	@Consumes(value = { MediaType.APPLICATION_FORM_URLENCODED })
+	@Consumes(value = { MediaType.APPLICATION_JSON })
 	@POST
 	public Response newSession(@Context HttpServletRequest httpServletRequest) {
 		httpServletRequest.getSession(true);
@@ -128,19 +129,19 @@ public class UserResource {
 	}
 
 	@Path("/new")
-	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+	@Consumes(MediaType.APPLICATION_JSON)
 	@POST
-	public Response newUser(@FormParam("email") String emailValue,
+	public Response newUser(NewUserRequest newUserRequest,
 			@Context HttpServletRequest httpServletRequest)
 			throws AddressException, MessagingException {
 		final Response response;
-		if (emailValue.length() == 0) {
+		if (newUserRequest.email.length() == 0) {
 			response = Response.status(Status.BAD_REQUEST).build();
 		} else {
 			PersistenceManager persistenceManager = PMF.getPersistenceManager();
 
 			try {
-				final Email email = new Email(emailValue);
+				final Email email = new Email(newUserRequest.email);
 				Query userByEmailQuery = persistenceManager
 						.newQuery(User.class);
 				userByEmailQuery
@@ -208,7 +209,7 @@ public class UserResource {
 									.addFrom(new Address[] { new InternetAddress(
 											"stl.mobile.dev@gmail.com") });
 							message.addRecipient(Message.RecipientType.TO,
-									new InternetAddress(emailValue));
+									new InternetAddress(newUserRequest.email));
 							message
 									.setSubject("Say More of That: Allow Session?");
 							message.setText(KeyFactory

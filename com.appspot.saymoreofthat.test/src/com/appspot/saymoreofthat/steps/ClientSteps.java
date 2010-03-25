@@ -11,7 +11,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.NewCookie;
@@ -19,7 +18,11 @@ import javax.ws.rs.core.UriBuilder;
 
 import junit.framework.Assert;
 
+import com.appspot.saymoreofthat.rest.JAXBContextResolver;
+import com.appspot.saymoreofthat.rest.jaxb.AddSessionRequestKey;
 import com.appspot.saymoreofthat.rest.jaxb.EventResponse;
+import com.appspot.saymoreofthat.rest.jaxb.NewEventRequest;
+import com.appspot.saymoreofthat.rest.jaxb.NewUserRequest;
 import com.appspot.saymoreofthat.rest.jaxb.VoteResponse;
 import com.appspot.saymoreofthat.rest.jdo.AddSessionRequest;
 import com.appspot.saymoreofthat.rest.jdo.Session;
@@ -50,6 +53,7 @@ public class ClientSteps {
 		ClientConfig clientConfig = new DefaultClientConfig();
 		clientConfig.getClasses()
 				.add(SerializableMessageBodyReaderWriter.class);
+		clientConfig.getClasses().add(JAXBContextResolver.class);
 		client = Client.create(clientConfig);
 
 		client.setFollowRedirects(false);
@@ -112,7 +116,7 @@ public class ClientSteps {
 		URI newSessionUri = UriBuilder.fromUri(
 				"http://localhost:8888/rest/users/session/new").build();
 		ClientRequest newSessionClientRequest = clientRequest(newSessionUri,
-				"POST", sessionKey);
+				"POST", sessionKey, null);
 		ClientResponse newSessionClientResponse = handleClientRequest(
 				newSessionClientRequest, sessionKey);
 		Assert.assertEquals(200, newSessionClientResponse.getStatus());
@@ -133,12 +137,10 @@ public class ClientSteps {
 		pushUsers(new ArrayList<User>(Collections.singleton(user)));
 	}
 
-	@Given("^an event from session \"(.*)\" named \"(.*)\" starting on \"(.*)\" in time zone \"(.*)\"$")
-	public void eventFromSessionNamedStartingOnInTimeZone(String sessionKey,
-			String eventName, String startTime, String timeZoneId)
-			throws ParseException {
-		useSessionToAddEventNamedStartingOn(sessionKey, eventName, startTime,
-				timeZoneId);
+	@Given("^an event from session \"(.*)\" named \"(.*)\" starting on \"(.*)\"$")
+	public void eventFromSessionNamedStartingOn(String sessionKey,
+			String eventName, String startTime) throws ParseException {
+		useSessionToAddEventNamedStartingOn(sessionKey, eventName, startTime);
 		clientResponse = null;
 	}
 
@@ -158,11 +160,12 @@ public class ClientSteps {
 	public void confirmSession(String sessionKey) {
 		URI uri = UriBuilder.fromPath(
 				"http://localhost:8888/rest/users/session/confirm").build();
-		ClientRequest clientRequest = clientRequest(uri, "POST", sessionKey);
+		ClientRequest clientRequest = clientRequest(uri, "POST", sessionKey,
+				MediaType.APPLICATION_JSON_TYPE);
 		String addSessionRequestEncodedKey = fetchAddSessionRequestEncodedKeyForSessionKey(sessionKey);
-		Form form = new Form();
-		form.add("key", addSessionRequestEncodedKey);
-		clientRequest.setEntity(form);
+		AddSessionRequestKey addSessionRequestKey = new AddSessionRequestKey();
+		addSessionRequestKey.key = addSessionRequestEncodedKey;
+		clientRequest.setEntity(addSessionRequestKey);
 
 		clientResponse = handleClientRequest(clientRequest, sessionKey);
 	}
@@ -171,30 +174,30 @@ public class ClientSteps {
 	public void denySession(String sessionKey) {
 		URI uri = UriBuilder.fromPath(
 				"http://localhost:8888/rest/users/session/deny").build();
-		ClientRequest clientRequest = clientRequest(uri, "POST", sessionKey);
+		ClientRequest clientRequest = clientRequest(uri, "POST", sessionKey,
+				MediaType.APPLICATION_JSON_TYPE);
 		String addSessionRequestEncodedKey = fetchAddSessionRequestEncodedKeyForSessionKey(sessionKey);
-		Form form = new Form();
-		form.add("key", addSessionRequestEncodedKey);
-		clientRequest.setEntity(form);
+		AddSessionRequestKey addSessionRequestKey = new AddSessionRequestKey();
+		addSessionRequestKey.key = addSessionRequestEncodedKey;
+		clientRequest.setEntity(addSessionRequestKey);
 
 		clientResponse = handleClientRequest(clientRequest, sessionKey);
 	}
 
-	@When("^I use session \"(.*)\" to add event \"(.*)\" starting on \"(.*)\" in time zone \"(.*)\"$")
+	@When("^I use session \"(.*)\" to add event \"(.*)\" starting on \"(.*)\"$")
 	public void useSessionToAddEventNamedStartingOn(String sessionKey,
-			String eventName, String startTime, String timeZoneId)
-			throws ParseException {
-		long startTimeMillis = new SimpleDateFormat("yyyy-MM-dd-HHmm").parse(
-				startTime).getTime();
+			String eventName, String startTime) throws ParseException {
+		long startTimeMillisUtc = new SimpleDateFormat("yyyy-MM-dd-HHmm")
+				.parse(startTime).getTime();
 
 		URI uri = UriBuilder.fromPath("http://localhost:8888/rest/events/new")
 				.build();
-		ClientRequest clientRequest = clientRequest(uri, "POST", sessionKey);
-		Form form = new Form();
-		form.add("name", eventName);
-		form.add("startTimeMillis", Long.toString(startTimeMillis));
-		form.add("timeZoneId", timeZoneId);
-		clientRequest.setEntity(form);
+		ClientRequest clientRequest = clientRequest(uri, "POST", sessionKey,
+				MediaType.APPLICATION_JSON_TYPE);
+		NewEventRequest newEventRequest = new NewEventRequest();
+		newEventRequest.name = eventName;
+		newEventRequest.startTimeMillisUtc = startTimeMillisUtc;
+		clientRequest.setEntity(newEventRequest);
 
 		clientResponse = handleClientRequest(clientRequest, sessionKey);
 	}
@@ -207,7 +210,7 @@ public class ClientSteps {
 		URI endUri = UriBuilder.fromPath("http://localhost:8888/rest/events/")
 				.path(namedEventResponse.id).path("end").build();
 		ClientRequest endClientRequest = clientRequest(endUri, "POST",
-				sessionKey);
+				sessionKey, null);
 		clientResponse = handleClientRequest(endClientRequest, sessionKey);
 	}
 
@@ -221,7 +224,7 @@ public class ClientSteps {
 				.path(namedEventResponse.id).path("vote").path(rawVoteValue)
 				.build();
 		ClientRequest clientRequest = clientRequest(voteUri, "POST",
-				voteSessionKey);
+				voteSessionKey, null);
 		clientResponse = handleClientRequest(clientRequest, voteSessionKey);
 	}
 
@@ -397,13 +400,11 @@ public class ClientSteps {
 				.contains(addSessionRequestEncodedKey));
 	}
 
-	@Then("^the returned URI should point to an event named \"(.*)\" starting on \"(.*)\" in time zone \"(.*)\"$")
+	@Then("^the returned URI should point to an event named \"(.*)\" starting on \"(.*)\"$")
 	public void theReturnedUriShouldPointToAnEventNamedStartingOn(String name,
-			String startTime, String timeZoneId) throws ParseException {
-		long startTimeMillis = new SimpleDateFormat("yyyy-MM-dd-HHmm").parse(
-				startTime).getTime();
-		long startTimeMillisUtc = startTimeMillis
-				- TimeZone.getTimeZone(timeZoneId).getOffset(startTimeMillis);
+			String startTime) throws ParseException {
+		long startTimeMillisUtc = new SimpleDateFormat("yyyy-MM-dd-HHmm")
+				.parse(startTime).getTime();
 
 		URI uri = clientResponse.getLocation();
 		ClientRequest clientRequest = ClientRequest.create().build(uri, "GET");
@@ -457,6 +458,22 @@ public class ClientSteps {
 								- currentTimeMillis) < 6000);
 	}
 
+	@Then("^the JSON of event \"(.*)\" from session \"(.*)\" should have the votes in an array$")
+	public void jsonOfEventFromSessionShouldHaveTheVotesInAnArray(
+			String eventName, String sessionKey) {
+		URI listUri = UriBuilder.fromPath(
+				"http://localhost:8888/rest/events/list").build();
+		ClientRequest listClientRequest = clientRequest(listUri, "GET",
+				sessionKey, null);
+		String eventResponseJson = handleClientRequest(listClientRequest,
+				sessionKey).getEntity(String.class);
+		System.out.println(eventResponseJson);
+		Assert.assertFalse("JSON contains a votes array as a plain object:\n"
+				+ eventResponseJson, eventResponseJson.contains("\"votes\":{"));
+		Assert.assertTrue("JSON does not contain votes array as array:\n"
+				+ eventResponseJson, eventResponseJson.contains("\"votes\":["));
+	}
+
 	private String fetchAddSessionRequestEncodedKeyForSessionKey(
 			String sessionKey) {
 		List<User> users = fetchUsers();
@@ -487,7 +504,8 @@ public class ClientSteps {
 		URI listUri = UriBuilder.fromPath(
 				"http://localhost:8888/rest/events/list").build();
 		ClientRequest listClientRequest = clientRequest(listUri, "GET",
-				sessionKey);
+				sessionKey, null);
+
 		ClientResponse listEventsClientResponse = handleClientRequest(
 				listClientRequest, sessionKey);
 		return listEventsClientResponse
@@ -506,18 +524,20 @@ public class ClientSteps {
 	}
 
 	private ClientResponse enrollUser(String sessionKey, String email) {
-		Form form = new Form();
-		form.add("email", email);
 		URI uri = UriBuilder.fromUri("http://localhost:8888/rest/users/new")
 				.build();
-		ClientRequest clientRequest = clientRequest(uri, "POST", sessionKey);
-		clientRequest.setEntity(form);
+		ClientRequest clientRequest = clientRequest(uri, "POST", sessionKey,
+				MediaType.APPLICATION_JSON_TYPE);
+		NewUserRequest newUserRequest = new NewUserRequest();
+		newUserRequest.email = email;
+		clientRequest.setEntity(newUserRequest);
 		return handleClientRequest(clientRequest, sessionKey);
 	}
 
 	private ClientRequest clientRequest(URI uri, String method,
-			String sessionKey) {
-		ClientRequest.Builder clientRequestBuilder = ClientRequest.create();
+			String sessionKey, MediaType mediaType) {
+		ClientRequest.Builder clientRequestBuilder = ClientRequest.create()
+				.type(mediaType);
 		List<NewCookie> newCookies = sessionKeyToNewCookies.get(sessionKey);
 		if (newCookies != null) {
 			for (NewCookie newCookie : newCookies) {

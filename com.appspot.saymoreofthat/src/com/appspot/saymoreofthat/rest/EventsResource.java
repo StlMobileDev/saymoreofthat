@@ -3,7 +3,6 @@ package com.appspot.saymoreofthat.rest;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TimeZone;
 
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
@@ -11,7 +10,6 @@ import javax.jdo.Transaction;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -27,6 +25,7 @@ import javax.ws.rs.core.Response.Status;
 import org.apache.commons.lang.StringEscapeUtils;
 
 import com.appspot.saymoreofthat.rest.jaxb.EventResponse;
+import com.appspot.saymoreofthat.rest.jaxb.NewEventRequest;
 import com.appspot.saymoreofthat.rest.jaxb.VoteResponse;
 import com.appspot.saymoreofthat.rest.jdo.Event;
 import com.appspot.saymoreofthat.rest.jdo.PMF;
@@ -38,15 +37,13 @@ import com.google.appengine.api.datastore.KeyFactory;
 @Path("/events")
 public class EventsResource {
 	@Path("/new")
-	@Consumes(value = { MediaType.APPLICATION_FORM_URLENCODED })
+	@Consumes(value = { MediaType.APPLICATION_JSON })
 	@POST
-	public Response newEvent(@FormParam("name") String eventName,
-			@FormParam("startTimeMillis") long startTimeMillis,
-			@FormParam("timeZoneId") String timeZoneId,
+	public Response newEvent(NewEventRequest newEventRequest,
 			@Context HttpServletRequest httpServletRequest,
 			@Context UriInfo uriInfo) {
 		final Response response;
-		String cleanEventName = StringEscapeUtils.escapeHtml(eventName);
+		String cleanEventName = StringEscapeUtils.escapeHtml(newEventRequest.name);
 		if (cleanEventName.length() == 0) {
 			response = Response.status(Status.BAD_REQUEST).build();
 		} else {
@@ -73,11 +70,8 @@ public class EventsResource {
 								.currentTransaction();
 						Session session = sessionsWithSessionId.get(0);
 						User user = session.getUser();
-						TimeZone timeZone = TimeZone.getTimeZone(timeZoneId);
-						long startTimeMillisUtc = startTimeMillis
-								- timeZone.getOffset(startTimeMillis);
 						Event event = new Event(user, cleanEventName,
-								startTimeMillisUtc);
+								newEventRequest.startTimeMillisUtc);
 						user.getEvents().add(event);
 						try {
 							transaction.begin();

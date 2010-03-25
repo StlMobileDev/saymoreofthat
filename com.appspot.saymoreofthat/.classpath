@@ -4,32 +4,20 @@
 	<classpathentry exported="true" kind="con" path="com.google.appengine.eclipse.core.GAE_CONTAINER"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/asm-3.1.jar"/>
-	<classpathentry kind="lib" path="war/WEB-INF/lib/jersey-core-1.1.4.1.jar" sourcepath="jersey-core-1.1.4.1-sources.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/com.appspot.saymoreofthat/jersey-archive-1.1.4.1.zip!/jersey-archive-1.1.4.1/apidocs/jersey"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="lib" path="war/WEB-INF/lib/jersey-server-1.1.4.1.jar" sourcepath="jersey-server-1.1.4.1-sources.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/com.appspot.saymoreofthat/jersey-archive-1.1.4.1.zip!/jersey-archive-1.1.4.1/apidocs/jersey"/>
-		</attributes>
-	</classpathentry>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/jackson-core-asl-1.1.1.jar"/>
-	<classpathentry kind="lib" path="war/WEB-INF/lib/jersey-json-1.1.4.1.jar" sourcepath="jersey-json-1.1.4.1-sources.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/com.appspot.saymoreofthat/jersey-archive-1.1.4.1.zip!/jersey-archive-1.1.4.1/apidocs/jersey"/>
-		</attributes>
-	</classpathentry>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/jettison-1.1.jar"/>
-	<classpathentry kind="lib" path="war/WEB-INF/lib/jsr311-api-1.1.1.jar" sourcepath="jsr311-api-1.1.1-sources.jar">
+	<classpathentry kind="lib" path="war/WEB-INF/lib/jsr311-api-1.1.1.jar" sourcepath="lib-sources/jsr311-api-1.1.1-sources.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:platform:/resource/com.appspot.saymoreofthat/jersey-archive-1.1.4.1.zip!/jersey-archive-1.1.4.1/apidocs/jsr311"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/activation.jar"/>
-	<classpathentry kind="lib" path="war/WEB-INF/lib/jaxb-api.jar" sourcepath="war/WEB-INF/lib/jaxb-api-src.zip"/>
-	<classpathentry kind="lib" path="war/WEB-INF/lib/jaxb-impl.jar" sourcepath="war/WEB-INF/lib/jaxb-impl.src.zip"/>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/jsr173_1.0_api.jar"/>
-	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-lang-2.5.jar" sourcepath="commons-lang-2.5-sources.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-lang-2.5.jar" sourcepath="lib-sources/commons-lang-2.5-sources.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/jersey-core-1.1.5.1.jar" sourcepath="lib-sources/jersey-core-1.1.5.1-sources.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/jersey-json-1.1.5.1.jar" sourcepath="lib-sources/jersey-json-1.1.5.1-sources.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/jersey-server-1.1.5.1.jar" sourcepath="lib-sources/jersey-server-1.1.5.1-sources.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/jaxb-api.jar" sourcepath="lib-sources/jaxb-api-src.zip"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/jaxb-impl-gae.jar"/>
 	<classpathentry kind="output" path="war/WEB-INF/classes"/>
 </classpath>

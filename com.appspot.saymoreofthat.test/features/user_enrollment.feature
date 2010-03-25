@@ -54,34 +54,35 @@ Feature: User Enrollment
 		
 	Scenario: User creates an event
 		Given a user in the database with session "A" and email "heath@borders.com"
-		When I use session "A" to add event "Event" starting on "2008-09-02-1747" in time zone "America/Chicago"
+		When I use session "A" to add event "Event" starting on "2008-09-02-1747"
 		Then I should get a response with a status code of 303
 		And the returned URI should point to an event named "Event" starting on "2008-09-02-1747" in time zone "America/Chicago"
 		
 	Scenario: User ends an event
 		Given a user in the database with session "A" and email "heath@borders.com"
-		And an event from session "A" named "Event" starting on "2008-09-02-1747" in time zone "America/Chicago"
+		And an event from session "A" named "Event" starting on "2008-09-02-1747"
 		When I use session "A" to end event "Event"
 		Then I should get a response with a status code of 204
 		And the end date of event "Event" on session "A" should be within one minute of now
 	
 	Scenario: User ends an ended event
 		Given a user in the database with session "A" and email "heath@borders.com"
-		And an event from session "A" named "Event" starting on "2008-09-02-1747" in time zone "America/Chicago"
+		And an event from session "A" named "Event" starting on "2008-09-02-1747"
 		And event "Event" from session "A" has ended
 		When I use session "A" to end event "Event"
 		Then I should get a response with a status code of 400
 		
 	Scenario: User votes
 		Given a user in the database with session "A" and email "heath@borders.com"
-		And an event from session "A" named "Event" starting on "2008-09-02-1747" in time zone "America/Chicago"
+		And an event from session "A" named "Event" starting on "2008-09-02-1747"
 		When I cast a vote of value "5" from session "B" for event "Event" from session "A"
 		Then event "Event" from session "A" should have a vote of value "5" with a time within one minute of now
 		And I should get a response with a status code of 204
+		And the JSON of event "Event" from session "A" should have the votes in an array
 		
 	Scenario: Two Users vote
 		Given a user in the database with session "A" and email "heath@borders.com"
-		And an event from session "A" named "Event" starting on "2008-09-02-1747" in time zone "America/Chicago"
+		And an event from session "A" named "Event" starting on "2008-09-02-1747"
 		When I cast a vote of value "5" from session "B" for event "Event" from session "A"
 		And I cast a vote of value "3" from session "C" for event "Event" from session "A"
 		Then event "Event" from session "A" should have a vote of value "5" with a time within one minute of now
@@ -89,7 +90,7 @@ Feature: User Enrollment
 	
 	Scenario: User votes for an ended event
 		Given a user in the database with session "A" and email "heath@borders.com"
-		And an event from session "A" named "Event" starting on "2008-09-02-1747" in time zone "America/Chicago"
+		And an event from session "A" named "Event" starting on "2008-09-02-1747"
 		And event "Event" from session "A" has ended
 		When I cast a vote of value "5" from session "B" for event "Event" from session "A"
 		Then I should get a response with a status code of 400
