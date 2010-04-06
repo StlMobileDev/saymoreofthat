@@ -58,6 +58,11 @@ Feature: User Enrollment
 		Then I should get a response with a status code of 303
 		And the returned URI should point to an event named "Event" starting on "2008-09-02-1747" in time zone "America/Chicago"
 		
+	Scenario: User creates an event with an empty name
+		Given a user in the database with session "A" and email "heath@borders.com"
+		When I use session "A" to add event "" starting on "2008-09-02-1747"
+		Then I should get a response with a status code of 400
+		
 	Scenario: User ends an event
 		Given a user in the database with session "A" and email "heath@borders.com"
 		And an event from session "A" named "Event" starting on "2008-09-02-1747"

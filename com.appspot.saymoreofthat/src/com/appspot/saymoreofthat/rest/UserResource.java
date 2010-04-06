@@ -21,18 +21,23 @@ import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import com.appspot.saymoreofthat.rest.jaxb.AddSessionRequestKey;
+import com.appspot.saymoreofthat.rest.jaxb.EventResponse;
 import com.appspot.saymoreofthat.rest.jaxb.NewUserRequest;
 import com.appspot.saymoreofthat.rest.jaxb.UserResponse;
+import com.appspot.saymoreofthat.rest.jaxb.VoteResponse;
 import com.appspot.saymoreofthat.rest.jdo.AddSessionRequest;
+import com.appspot.saymoreofthat.rest.jdo.Event;
 import com.appspot.saymoreofthat.rest.jdo.PMF;
 import com.appspot.saymoreofthat.rest.jdo.Session;
 import com.appspot.saymoreofthat.rest.jdo.User;
+import com.appspot.saymoreofthat.rest.jdo.Vote;
 import com.google.appengine.api.datastore.Email;
 import com.google.appengine.api.datastore.KeyFactory;
 
@@ -121,7 +126,6 @@ public class UserResource {
 	}
 
 	@Path("/session/new")
-	@Consumes(value = { MediaType.APPLICATION_JSON })
 	@POST
 	public Response newSession(@Context HttpServletRequest httpServletRequest) {
 		httpServletRequest.getSession(true);
@@ -226,6 +230,56 @@ public class UserResource {
 		}
 
 		return response;
+	}
+
+	@Path("/events/list")
+	@GET
+	@Produces(MediaType.APPLICATION_JSON)
+	public List<EventResponse> listUserEvents(
+			@Context HttpServletRequest httpServletRequest) {
+		HttpSession httpSession = httpServletRequest.getSession(false);
+		if (httpSession == null) {
+			throw new WebApplicationException(Status.BAD_REQUEST);
+		}
+		
+		PersistenceManager persistenceManager = PMF.getPersistenceManager();
+		try {
+			Query sessionBySessionIdQuery = persistenceManager
+					.newQuery(Session.class);
+			sessionBySessionIdQuery.declareParameters("String sessionIdParam");
+			sessionBySessionIdQuery.setFilter("sessionId == sessionIdParam");
+			List<Session> sessionsWithSessionId = (List<Session>) sessionBySessionIdQuery
+					.execute(httpSession.getId());
+			
+			if (sessionsWithSessionId.isEmpty()) {
+				throw new WebApplicationException(Status.BAD_REQUEST);
+			} else {
+				User user = sessionsWithSessionId.get(0).getUser();
+				List<EventResponse> eventResponses = new ArrayList<EventResponse>(user.getEvents().size());
+				for (Event event : user.getEvents()) {
+					EventResponse eventResponse = new EventResponse();
+					eventResponse.endTimeMillisUtc = event.getEndTimeMillisUtc();
+					eventResponse.id = KeyFactory.keyToString(event.getKey());
+					eventResponse.name = event.getName();
+					eventResponse.startTimeMillisUtc = event.getStartTimeMillisUtc();
+					
+					eventResponse.votes = new ArrayList<VoteResponse>(event.getVotes().size());
+					for (Vote vote : event.getVotes()) {
+						VoteResponse voteResponse = new VoteResponse();
+						voteResponse.timeMillisUtc = vote.getTimeMillisUtc();
+						voteResponse.value = vote.getValue();
+						
+						eventResponse.votes.add(voteResponse);
+					}
+					
+					eventResponses.add(eventResponse);
+				}
+				
+				return eventResponses;
+			}
+		} finally {
+			persistenceManager.close();
+		}
 	}
 
 	@Path("/show/session")
